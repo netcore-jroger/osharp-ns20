@@ -13,6 +13,7 @@ using System.Linq;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using OSharp.Collections;
 using OSharp.Core.Modules;
 using OSharp.Data;
 using OSharp.Dependency;
@@ -76,6 +77,26 @@ namespace OSharp.Security
             IModuleFunctionStore<TModuleFunction, TModuleKey> moduleFunctionStore =
                 provider.GetService<IModuleFunctionStore<TModuleFunction, TModuleKey>>();
 
+            //删除数据库中多余的模块
+            TModule[] modules = moduleStore.Modules.ToArray();
+            var positionModules = modules.Select(m => new { m.Id, Position = GetModulePosition(modules, m) })
+                .OrderByDescending(m => m.Position.Length).ToArray();
+            string[] deletePositions = positionModules.Select(m => m.Position)
+                .Except(moduleInfos.Select(n => $"{n.Position}.{n.Code}"))
+                .Except("Root,Root.Site,Root.Admin,Root.Admin.Identity,Root.Admin.Security,Root.Admin.System".Split(','))
+                .ToArray();
+            TModuleKey[] deleteModuleIds = positionModules.Where(m => deletePositions.Contains(m.Position)).Select(m => m.Id).ToArray();
+            OperationResult result;
+            foreach (TModuleKey id in deleteModuleIds)
+            {
+                result = moduleStore.DeleteModule(id).Result;
+                if (result.Errored)
+                {
+                    throw new OsharpException(result.Message);
+                }
+            }
+
+            //新增或更新传入的模块
             foreach (ModuleInfo info in moduleInfos)
             {
                 TModule parent = GetModule(moduleStore, info.Position);
@@ -83,11 +104,10 @@ namespace OSharp.Security
                 {
                     throw new OsharpException($"路径为“{info.Position}”的模块信息无法找到");
                 }
-                OperationResult result;
                 TModule module = moduleStore.Modules.FirstOrDefault(m => m.ParentId.Equals(parent.Id) && m.Code == info.Code);
                 if (module == null)
                 {
-                    TModuleInputDto dto = GetDto(info, parent.Id, null);
+                    TModuleInputDto dto = GetDto(info, parent, null);
                     result = moduleStore.CreateModule(dto).Result;
                     if (result.Errored)
                     {
@@ -97,7 +117,7 @@ namespace OSharp.Security
                 }
                 else
                 {
-                    TModuleInputDto dto = GetDto(info, parent.Id, module);
+                    TModuleInputDto dto = GetDto(info, parent, module);
                     result = moduleStore.UpdateModule(dto).Result;
                     if (result.Errored)
                     {
@@ -149,7 +169,7 @@ namespace OSharp.Security
             return module;
         }
 
-        private static TModuleInputDto GetDto(ModuleInfo info, TModuleKey parentId, TModule existsModule)
+        private static TModuleInputDto GetDto(ModuleInfo info, TModule parent, TModule existsModule)
         {
             return new TModuleInputDto()
             {
@@ -157,9 +177,15 @@ namespace OSharp.Security
                 Name = info.Name,
                 Code = info.Code,
                 OrderCode = info.Order,
-                Remark = existsModule?.Remark,
-                ParentId = parentId
+                Remark = existsModule?.Remark ?? $"{parent.Name}-{info.Name}",
+                ParentId = parent.Id
             };
+        }
+
+        private static string GetModulePosition(TModule[] source, TModule module)
+        {
+            string[] codes = module.TreePathIds.Select(id => source.First(n => n.Id.Equals(id)).Code).ToArray();
+            return codes.ExpandAndToString(".");
         }
     }
 }
