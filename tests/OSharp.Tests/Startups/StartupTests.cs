@@ -1,12 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 using Microsoft.Extensions.DependencyInjection;
 
 using OSharp.Core;
+using OSharp.Core.Packs;
 using OSharp.Dependency;
-using OSharp.Entity;
 
 using Shouldly;
 
@@ -21,7 +19,7 @@ namespace OSharp.Tests.Startups
         public void ServiceLifetimeTest()
         {
             ServiceCollection services = new ServiceCollection();
-            services.AddOSharp();
+            services.AddOSharp<OsharpPackManager>();
 
             IServiceProvider provider = services.BuildServiceProvider();
 

@@ -9,7 +9,6 @@
 
 using System;
 
-using OSharp.Dependency;
 using OSharp.Reflection;
 
 
@@ -20,6 +19,11 @@ namespace OSharp.Entity
     /// </summary>
     public interface IEntityConfigurationTypeFinder : ITypeFinder
     {
+        /// <summary>
+        /// 初始化
+        /// </summary>
+        void Initialize();
+
         /// <summary>
         /// 获取指定上下文类型的实体配置注册信息
         /// </summary>

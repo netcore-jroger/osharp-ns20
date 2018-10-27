@@ -8,14 +8,33 @@
 // -----------------------------------------------------------------------
 
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+
+using OSharp.AspNetCore.Mvc.Filters;
+using OSharp.Dependency;
+
 
 namespace OSharp.AspNetCore.Mvc
 {
     /// <summary>
     /// WebApi控制器基类
     /// </summary>
+    [AuditOperation]
     [ApiController]
     [Route("api/[controller]/[action]")]
     public abstract class ApiController : Controller
-    { }
+    {
+        /// <summary>
+        /// 初始化一个<see cref="ApiController"/>类型的新实例
+        /// </summary>
+        protected ApiController()
+        {
+            Logger = ServiceLocator.Instance.GetService<ILoggerFactory>().CreateLogger(GetType());
+        }
+
+        /// <summary>
+        /// 获取或设置 日志对象
+        /// </summary>
+        protected ILogger Logger { get; }
+    }
 }

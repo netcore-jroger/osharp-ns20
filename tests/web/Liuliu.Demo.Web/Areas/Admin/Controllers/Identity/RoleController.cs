@@ -23,21 +23,23 @@ using Liuliu.Demo.Security.Dtos;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
+using OSharp.AspNetCore.Mvc;
 using OSharp.AspNetCore.Mvc.Filters;
 using OSharp.AspNetCore.UI;
+using OSharp.Caching;
 using OSharp.Collections;
+using OSharp.Core.Functions;
 using OSharp.Core.Modules;
 using OSharp.Data;
 using OSharp.Entity;
 using OSharp.Filter;
 using OSharp.Identity;
-using OSharp.Linq;
 using OSharp.Mapping;
 
 
 namespace Liuliu.Demo.Web.Areas.Admin.Controllers
 {
-    [ModuleInfo(Order = 2, Position = "Identity")]
+    [ModuleInfo(Order = 2, Position = "Identity", PositionName = "身份认证模块")]
     [Description("管理-角色信息")]
     public class RoleController : AdminApiController
     {
@@ -61,12 +63,14 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
         [HttpPost]
         [ModuleInfo]
         [Description("读取")]
-        public PageData<RoleOutputDto> Read()
+        public PageData<RoleOutputDto> Read(PageRequest request)
         {
-            PageRequest request = new PageRequest(Request);
-            Expression<Func<Role, bool>> predicate = FilterHelper.GetDataFilterExpression<Role>(request.FilterGroup);
-            var page = _roleManager.Roles.ToPage<Role, RoleOutputDto>(predicate, request.PageCondition);
-            
+            Check.NotNull(request, nameof(request));
+            IFunction function = this.GetExecuteFunction();
+
+            Expression<Func<Role, bool>> predicate = request.FilterGroup.ToExpression<Role>();
+            var page = _roleManager.Roles.ToPageCache<Role, RoleOutputDto>(predicate, request.PageCondition, function);
+
             return page.ToPageData();
         }
 
@@ -76,10 +80,16 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
         /// <returns>角色节点列表</returns>
         [HttpGet]
         [Description("读取节点")]
-        public List<RoleNode> ReadNode()
+        public RoleNode[] ReadNode()
         {
-            Expression<Func<Role, bool>> roleExp = FilterHelper.GetDataFilterExpression<Role>().And(m => !m.IsLocked);
-            List<RoleNode> nodes = _roleManager.Roles.Where(roleExp).OrderBy(m => m.Name).ToOutput<RoleNode>().ToList();
+            IFunction function = this.GetExecuteFunction();
+            Expression<Func<Role, bool>> exp = m => !m.IsLocked;
+
+            RoleNode[] nodes = _roleManager.Roles.ToCacheArray(exp, m => new RoleNode()
+            {
+                RoleId = m.Id,
+                RoleName = m.Name
+            }, function);
             return nodes;
         }
 
@@ -95,8 +105,8 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
             Check.GreaterThan(userId, nameof(userId), 0);
 
             int[] checkRoleIds = _identityContract.UserRoles.Where(m => m.UserId == userId).Select(m => m.RoleId).Distinct().ToArray();
-            Expression<Func<Role, bool>> roleExp = FilterHelper.GetDataFilterExpression<Role>().And(m => !m.IsLocked);
-            List<UserRoleNode> nodes = _identityContract.Roles.Where(roleExp).OrderByDescending(m => m.IsAdmin).ThenBy(m => m.Id).ToOutput<UserRoleNode>().ToList();
+            List<UserRoleNode> nodes = _identityContract.Roles.Where(m => !m.IsLocked)
+                .OrderByDescending(m => m.IsAdmin).ThenBy(m => m.Id).ToOutput<Role, UserRoleNode>().ToList();
             nodes.ForEach(m => m.IsChecked = checkRoleIds.Contains(m.Id));
             return nodes;
         }

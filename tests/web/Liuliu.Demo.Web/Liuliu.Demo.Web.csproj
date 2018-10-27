@@ -27,6 +27,11 @@
   </PropertyGroup>
 
   <Import Project="../../../build/version.props" />
+
+  <ItemGroup>
+    <Compile Remove="Startups\MySqlDefaultDbContextMigrationPack.cs" />
+    <Compile Remove="Startups\MySqlDesignTimeDefaultDbContextFactory.cs" />
+  </ItemGroup>
   
   <ItemGroup>
     <None Remove="Properties\PublishProfiles\CustomProfile.pubxml" />
@@ -34,19 +39,21 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="log\" />
     <Folder Include="Properties\PublishProfiles\" />
     <Folder Include="wwwroot\" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.App" Version="2.1.1" />
+    <PackageReference Include="Microsoft.AspNetCore.App" Version="2.1.2" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="2.1.1" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="2.5.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="3.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\OSharp.AspNetCore\OSharp.AspNetCore.csproj" />
     <ProjectReference Include="..\..\..\src\OSharp.AutoMapper\OSharp.AutoMapper.csproj" />
+    <ProjectReference Include="..\..\..\src\OSharp.EntityFrameworkCore.MySql\OSharp.EntityFrameworkCore.MySql.csproj" />
     <ProjectReference Include="..\..\..\src\OSharp.EntityFrameworkCore.SqlServer\OSharp.EntityFrameworkCore.SqlServer.csproj" />
     <ProjectReference Include="..\..\..\src\OSharp.Log4Net\OSharp.Log4Net.csproj" />
     <ProjectReference Include="..\Liuliu.Demo.Core\Liuliu.Demo.Core.csproj" />

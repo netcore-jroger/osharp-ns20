@@ -8,6 +8,7 @@
 // -----------------------------------------------------------------------
 
 using System;
+using System.ComponentModel;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -20,6 +21,7 @@ namespace OSharp.EventBuses
     /// <summary>
     /// 事件总线模块
     /// </summary>
+    [Description("事件总线模块")]
     public class EventBusPack : OsharpPack
     {
         /// <summary>
@@ -39,6 +41,7 @@ namespace OSharp.EventBuses
         /// <returns></returns>
         public override IServiceCollection AddServices(IServiceCollection services)
         {
+            services.AddSingleton<IEventHandlerTypeFinder, EventHandlerTypeFinder>();
             services.AddSingleton<IEventBus, PassThroughEventBus>();
             services.AddSingleton<IEventSubscriber>(provider => provider.GetService<IEventBus>());
             services.AddSingleton<IEventPublisher>(provider => provider.GetService<IEventBus>());
@@ -48,11 +51,11 @@ namespace OSharp.EventBuses
 
             return services;
         }
-
+        
         /// <summary>
-        /// 使用模块服务
+        /// 应用模块服务
         /// </summary>
-        /// <param name="provider"></param>
+        /// <param name="provider">服务提供者</param>
         public override void UsePack(IServiceProvider provider)
         {
             IEventBusBuilder builder = provider.GetService<IEventBusBuilder>();

@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 
 using OSharp.Data;
 using OSharp.Filter;
+using OSharp.Secutiry;
 
 
 namespace OSharp.Security
@@ -31,7 +32,7 @@ namespace OSharp.Security
         IQueryable<TEntityRole> EntityRoles { get; }
 
         /// <summary>
-        /// 检查实体角色信息信息是否存在
+        /// 检查实体角色信息是否存在
         /// </summary>
         /// <param name="predicate">检查谓语表达式</param>
         /// <param name="id">更新的实体角色信息编号</param>
@@ -43,25 +44,26 @@ namespace OSharp.Security
         /// </summary>
         /// <param name="roleId">角色编号</param>
         /// <param name="entityId">实体编号</param>
+        /// <param name="operation">操作</param>
         /// <returns>过滤条件组</returns>
-        FilterGroup[] GetEntityRoleFilterGroups(TRoleKey roleId, Guid entityId);
+        FilterGroup[] GetEntityRoleFilterGroups(TRoleKey roleId, Guid entityId, DataAuthOperation operation);
 
         /// <summary>
-        /// 添加实体角色信息信息
+        /// 添加实体角色信息
         /// </summary>
         /// <param name="dtos">要添加的实体角色信息DTO信息</param>
         /// <returns>业务操作结果</returns>
         Task<OperationResult> CreateEntityRoles(params TEntityRoleInputDto[] dtos);
 
         /// <summary>
-        /// 更新实体角色信息信息
+        /// 更新实体角色信息
         /// </summary>
         /// <param name="dtos">包含更新信息的实体角色信息DTO信息</param>
         /// <returns>业务操作结果</returns>
         Task<OperationResult> UpdateEntityRoles(params TEntityRoleInputDto[] dtos);
 
         /// <summary>
-        /// 删除实体角色信息信息
+        /// 删除实体角色信息
         /// </summary>
         /// <param name="ids">要删除的实体角色信息编号</param>
         /// <returns>业务操作结果</returns>

@@ -8,7 +8,6 @@
 // -----------------------------------------------------------------------
 
 using System;
-using System.Data.Common;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -27,6 +26,6 @@ namespace OSharp.Entity
         /// </summary>
         /// <param name="resolveOptions">上下文解析选项</param>
         /// <returns></returns>
-        DbContext Resolve(DbContextResolveOptions resolveOptions);
+        IDbContext Resolve(DbContextResolveOptions resolveOptions);
     }
 }

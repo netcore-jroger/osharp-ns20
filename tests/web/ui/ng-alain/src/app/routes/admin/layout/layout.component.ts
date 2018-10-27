@@ -33,7 +33,7 @@ export class AdminLayoutComponent {
     public menuSrv: MenuService,
     public settings: SettingsService,
   ) {
-    if (!settings.user.isadmin) {
+    if (!settings.user.isAdmin) {
       _message.error("你无权查看后台管理页面，即将跳转到首页");
       setTimeout(() => {
         router.navigate(['home']);
@@ -46,6 +46,7 @@ export class AdminLayoutComponent {
       }
       if (evt instanceof NavigationError) {
         this.isFetching = false;
+        console.log(evt);
         _message.error(`无法加载${evt.url}路由`, { nzDuration: 1000 * 3 });
         return;
       }

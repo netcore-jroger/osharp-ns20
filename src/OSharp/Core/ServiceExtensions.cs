@@ -1,26 +1,26 @@
 ﻿// -----------------------------------------------------------------------
-//  <copyright file="ServiceCollectionExtensions.cs" company="OSharp开源团队">
+//  <copyright file="ServiceExtensions.cs" company="OSharp开源团队">
 //      Copyright (c) 2014-2018 OSharp. All rights reserved.
 //  </copyright>
 //  <site>http://www.osharp.org</site>
-//  <last-editor>郭明锋</last-editor>
-//  <last-date>2018-03-08 0:58</last-date>
+//  <last-editor></last-editor>
+//  <last-date>2018-07-26 12:22</last-date>
 // -----------------------------------------------------------------------
 
 using System;
 
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using OSharp.Core.Builders;
 using OSharp.Core.Options;
 using OSharp.Core.Packs;
 using OSharp.Data;
-using OSharp.Dependency;
+using OSharp.Entity;
 using OSharp.Reflection;
 
 
-namespace OSharp.Core
+namespace Microsoft.Extensions.DependencyInjection
 {
     /// <summary>
     /// 依赖注入服务集合扩展
@@ -30,38 +30,27 @@ namespace OSharp.Core
         /// <summary>
         /// 将OSharp服务，各个<see cref="OsharpPack"/>模块的服务添加到服务容器中
         /// </summary>
-        public static IServiceCollection AddOSharp(this IServiceCollection services, Action<IOSharpBuilder> builderAction = null, AppServiceScanOptions scanOptions = null)
+        public static IServiceCollection AddOSharp<TOsharpPackManager>(this IServiceCollection services, Action<IOsharpBuilder> builderAction = null)
+            where TOsharpPackManager : IOsharpPackManager, new()
         {
             Check.NotNull(services, nameof(services));
 
-            IOSharpBuilder builder = new OSharpBuilder();
+            //初始化所有程序集查找器，如需更改程序集查找逻辑，请事先赋予自定义查找器的实例
+            if (Singleton<IAllAssemblyFinder>.Instance == null)
+            {
+                Singleton<IAllAssemblyFinder>.Instance = new AppDomainAllAssemblyFinder();
+            }
+
+            IOsharpBuilder builder = new OsharpBuilder();
             if (builderAction != null)
             {
                 builderAction(builder);
             }
-            OSharpPackManager manager = new OSharpPackManager(builder, new AppDomainAllAssemblyFinder());
+            Singleton<IOsharpBuilder>.Instance = builder;
+            TOsharpPackManager manager = new TOsharpPackManager();
+            services.AddSingleton<IOsharpPackManager>(manager);
             manager.LoadPacks(services);
-            services.AddSingleton(provider => manager);
-            if (scanOptions == null)
-            {
-                scanOptions = new AppServiceScanOptions();
-            }
-            services = new AppServiceAdder(scanOptions).AddServices(services);
-            if (builder.OptionsAction != null)
-            {
-                services.Configure(builder.OptionsAction);
-            }
             return services;
-        }
-
-        /// <summary>
-        /// 应用OSharp框架，初始化各个Pack
-        /// </summary>
-        public static IServiceProvider UseOSharp(this IServiceProvider provider)
-        {
-            OSharpPackManager packManager = provider.GetService<OSharpPackManager>();
-            packManager.UsePacks(provider);
-            return provider;
         }
 
         /// <summary>
@@ -70,6 +59,57 @@ namespace OSharp.Core
         public static OSharpOptions GetOSharpOptions(this IServiceProvider provider)
         {
             return provider.GetService<IOptions<OSharpOptions>>()?.Value;
+        }
+
+        /// <summary>
+        /// 获取指定类型的日志对象
+        /// </summary>
+        /// <typeparam name="T">非静态强类型</typeparam>
+        /// <returns>日志对象</returns>
+        public static ILogger<T> GetLogger<T>(this IServiceProvider provider)
+        {
+            ILoggerFactory factory = provider.GetService<ILoggerFactory>();
+            return factory.CreateLogger<T>();
+        }
+
+        /// <summary>
+        /// 获取指定类型的日志对象
+        /// </summary>
+        /// <param name="provider"></param>
+        /// <param name="type">指定类型</param>
+        /// <returns>日志对象</returns>
+        public static ILogger GetLogger(this IServiceProvider provider, Type type)
+        {
+            ILoggerFactory factory = provider.GetService<ILoggerFactory>();
+            return factory.CreateLogger(type);
+        }
+
+        /// <summary>
+        /// 获取指定名称的日志对象
+        /// </summary>
+        public static ILogger GetLogger(this IServiceProvider provider, string name)
+        {
+            ILoggerFactory factory = provider.GetService<ILoggerFactory>();
+            return factory.CreateLogger(name);
+        }
+
+        /// <summary>
+        /// 获取指定实体类的上下文所在工作单元
+        /// </summary>
+        public static IUnitOfWork GetUnitOfWork<TEntity, TKey>(this IServiceProvider provider) where TEntity : IEntity<TKey>
+        {
+            IUnitOfWorkManager unitOfWorkManager = provider.GetService<IUnitOfWorkManager>();
+            return unitOfWorkManager.GetUnitOfWork<TEntity, TKey>();
+        }
+
+        /// <summary>
+        /// OSharp框架初始化，适用于非AspNetCore环境
+        /// </summary>
+        public static IServiceProvider UseOsharp(this IServiceProvider provider)
+        {
+            IOsharpPackManager packManager = provider.GetService<IOsharpPackManager>();
+            packManager.UsePack(provider);
+            return provider;
         }
     }
 }

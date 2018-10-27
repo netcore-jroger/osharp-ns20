@@ -8,6 +8,7 @@
 // -----------------------------------------------------------------------
 
 using System;
+using System.ComponentModel;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -20,6 +21,7 @@ namespace OSharp.Core.EntityInfos
     /// <summary>
     /// 实体信息模块
     /// </summary>
+    [Description("数据实体模块")]
     public class EntityInfoPack : OsharpPack
     {
         /// <summary>
@@ -34,16 +36,15 @@ namespace OSharp.Core.EntityInfos
         /// <returns></returns>
         public override IServiceCollection AddServices(IServiceCollection services)
         {
-            services.AddSingleton<IEntityTypeFinder, EntityTypeFinder>();
             services.AddSingleton<IEntityInfoHandler, EntityInfoHandler>();
 
             return services;
         }
 
         /// <summary>
-        /// 使用模块服务
+        /// 应用模块服务
         /// </summary>
-        /// <param name="provider"></param>
+        /// <param name="provider">服务提供者</param>
         public override void UsePack(IServiceProvider provider)
         {
             IEntityInfoHandler handler = provider.GetService<IEntityInfoHandler>();

@@ -1,10 +1,9 @@
 import { Injectable, NgZone, ElementRef, Injector, Inject } from '@angular/core';
 import { OsharpService, ComponentBase } from '@shared/osharp/services/osharp.service';
-import { FilterGroup, FilterRule, FilterOperate } from '@shared/osharp/osharp.model';
+import { FilterGroup, FilterRule, FilterOperate, PageRequest, SortCondition, ListSortDirection } from '@shared/osharp/osharp.model';
 import { isFunction } from 'util';
 import { List } from "linqts";
 import { JWTTokenModel, ITokenService, DA_SERVICE_TOKEN } from '@delon/auth';
-import { element } from '../../../../../node_modules/protractor';
 
 
 @Injectable()
@@ -26,8 +25,11 @@ export class KendouiService {
     if (!funcFieldReplace) {
       funcFieldReplace = field => field;
     }
-    if (!filter || !filter.filters || !filter.filters.length) {
+    if (!filter || !filter.filters) {
       return null;
+    }
+    if (filter.filters.length == 0) {
+      return new FilterGroup();
     }
     const group = new FilterGroup();
     filter.filters.forEach(item => {
@@ -59,7 +61,7 @@ export class KendouiService {
    * @param operate kendo的查询对比操作字符串
    */
   renderRuleOperate(operate): FilterOperate {
-    var dict: { [key: string]: FilterOperate } = {
+    let dict: { [key: string]: FilterOperate } = {
       "and": FilterOperate.And,
       "or": FilterOperate.Or,
       "eq": FilterOperate.Equal,
@@ -81,38 +83,33 @@ export class KendouiService {
         }
       }
     }
-    throw `后端服务器不支持${operate}的比较操作`;
+    throw new Error(`后端服务器不支持${operate}的比较操作`);
   }
   /**
    * 处理kendoui到osharp框架的查询参数
    * @param options kendo发送的选项
    * @param funcFieldReplace 字段替换函数，用于处理关联实体的字段
    */
-  readParameterMap(options, funcFieldReplace) {
+  readParameterMap(options, funcFieldReplace): PageRequest {
     if (!funcFieldReplace) {
       funcFieldReplace = field => field;
     }
-    const paramter = {
-      pageIndex: options.page,
-      pageSize: options.pageSize || 100000,
-      sortField: null,
-      sortOrder: null,
-      filter_group: null
-    };
+    const request = new PageRequest();
+    let page = request.PageCondition;
+    page.PageIndex = options.page;
+    page.PageSize = options.pageSize || 100000;
     if (options.sort && options.sort.length) {
-      const fields = [], orders = [];
       options.sort.forEach(item => {
-        fields.push(funcFieldReplace(item.field));
-        orders.push(item.dir);
+        let sort = new SortCondition();
+        sort.SortField = funcFieldReplace(item.field);
+        sort.ListSortDirection = item.dir == "desc" ? ListSortDirection.Descending : ListSortDirection.Ascending;
+        page.SortConditions.push(sort);
       });
-      paramter.sortField = this.osharp.expandAndToString(fields);
-      paramter.sortOrder = this.osharp.expandAndToString(orders);
     }
     if (options.filter && options.filter.filters.length) {
-      const group = this.getFilterGroup(options.filter, funcFieldReplace);
-      paramter.filter_group = JSON.stringify(group);
+      request.FilterGroup = this.getFilterGroup(options.filter, funcFieldReplace);
     }
-    return paramter;
+    return request;
   }
 
   /**给每个请求头设置 JWT-Token */
@@ -161,6 +158,116 @@ export class KendouiService {
         e.response = this.TreeDataInit(e.response);
       }
     });
+  }
+
+  /**
+   * 创建一个Grid的选项
+   * @param dataSource 数据源
+   * @param columns 数据列配置
+   */
+  CreateGridOptions(
+    dataSource: kendo.data.DataSource,
+    columns: kendo.ui.GridColumn[]
+  ) {
+    const options: kendo.ui.GridOptions = {
+      dataSource: dataSource,
+      toolbar: [{ name: 'create' }, { name: 'save' }, { name: 'cancel' }],
+      columns: columns,
+      navigatable: true,
+      filterable: true,
+      resizable: true,
+      scrollable: true,
+      selectable: false,
+      reorderable: true,
+      columnMenu: false,
+      sortable: { allowUnsort: true, showIndexes: true, mode: 'multiple' },
+      pageable: { refresh: true, pageSizes: [10, 15, 20, 50, 'all'], buttonCount: 5 },
+      editable: { mode: "incell", confirmation: true },
+      saveChanges: e => {
+        if (!confirm('是否提交对表格的更改？')) {
+          e.preventDefault();
+        }
+      }
+    };
+    return options;
+  }
+
+  /**
+   * 创建Grid数据源
+   * @param moduleName 模块名称
+   * @param model 模型信息
+   * @param funcFieldReplace 字段替换方法委托
+   * @param funcGridRefresh 表格刷新方法委托
+   */
+  CreateDataSourceOptions(moduleName: string,
+    model: any,
+    funcFieldReplace?: any,
+    funcGridRefresh?: any
+  ): kendo.data.DataSourceOptions {
+    const options: kendo.data.DataSourceOptions = {
+      transport: {
+        read: { url: "api/admin/" + moduleName + "/read", type: 'post', dataType: 'json', contentType: 'application/json;charset=utf-8' },
+        create: { url: "api/admin/" + moduleName + "/create", type: 'post', dataType: 'json', contentType: 'application/json;charset=utf-8' },
+        update: { url: "api/admin/" + moduleName + "/update", type: 'post', dataType: 'json', contentType: 'application/json;charset=utf-8' },
+        destroy: { url: "api/admin/" + moduleName + "/delete", type: 'post', dataType: 'json', contentType: 'application/json;charset=utf-8' },
+        parameterMap: (opts, operation) => {
+          if (operation == 'read') {
+            let request = this.readParameterMap(opts, funcFieldReplace || (field => field));
+            return JSON.stringify(request);
+          }
+          if (operation == 'create' || operation == 'update') {
+            return JSON.stringify(opts.models);
+          }
+          if (operation == 'destroy' && opts.models.length) {
+            const ids = new List(opts.models).Select(m => m['Id']).ToArray();
+            return JSON.stringify(ids);
+          }
+          return {};
+        }
+      },
+      group: [],
+      schema: {
+        model: model,
+        data: d => d.Rows,
+        total: d => d.Total
+      },
+      aggregate: [],
+      batch: true,
+      pageSize: 24,
+      serverPaging: true,
+      serverSorting: true,
+      serverFiltering: true,
+      requestStart: e => this.OnRequestStart(e),
+      requestEnd: e => {
+        if (e.type == "read" && !e.response.Type) {
+          return;
+        }
+        this.osharp.ajaxResult(e.response, funcGridRefresh);
+      },
+      change: function () { },
+      error: e => {
+        if (e.status != "error") {
+          return;
+        }
+        this.osharp.ajaxError(e.xhr);
+      }
+    };
+    return options;
+  }
+
+  /**
+   * 创建本地数据源
+   * @param model 数据模型
+   */
+  CreateLocalDataSourceOptions(model: any, data?: object[]): kendo.data.DataSourceOptions {
+    let options: kendo.data.DataSourceOptions = {
+      data: data || [],
+      schema: {
+        model: model
+      },
+      pageSize: 20
+    };
+    return options;
   }
 
   /**
@@ -244,7 +351,7 @@ export class KendouiService {
   }
 
   RemoteDropDownList(element, url, textField = 'text', valueField = 'id') {
-    var dataSource = {
+    let dataSource = {
       transport: {
         dataType: "json",
         read: { url: url }
@@ -270,7 +377,7 @@ export class KendouiService {
 
   ComboBox(element, dataSource, textField = 'text', valueField = 'id') {
     return new kendo.ui.ComboBox(element, {
-      autoBind: true,
+      autoBind: false,
       filter: "contains",
       dataTextField: textField,
       dataValueField: valueField,
@@ -284,6 +391,30 @@ export class KendouiService {
         serverFiltering: true,
         dateType: "json",
         read: { url: url }
+      },
+      requestStart: e => this.OnRequestStart(e)
+    };
+    return this.ComboBox(element, dataSource, textField, valueField);
+  }
+
+  RemoteFilterComboBox(element, options, url, textField = 'text', valueField = 'id') {
+    let dataSource: kendo.data.DataSourceOptions = {
+      serverFiltering: true,
+      transport: {
+        read: { url: url, type: 'post', dataType: 'json', contentType: 'application/json;charset=utf-8' },
+        parameterMap: (opts, type) => {
+          if (type == 'read') {
+            let filter = opts.filter;
+            if (options.buildFilter != undefined && filter && filter.filters.length) {
+              filter = options.buildFilter(filter);
+            }
+            let group = this.getFilterGroup(filter, field => field);
+            if (group == null) {
+              group = new FilterGroup();
+            }
+            return JSON.stringify(group);
+          }
+        }
       },
       requestStart: e => this.OnRequestStart(e)
     };
@@ -309,6 +440,42 @@ export class KendouiService {
     return this.ComboBoxEditor(container, options, dataSource, textField, valueField);
   }
 
+  RemoteFilterComboBoxEditor(container, options, url, textField = 'text', valueField = 'id') {
+    let input = $('<input/>');
+    input.attr('name', options.field);
+    input.appendTo(container);
+    let dataSource: kendo.data.DataSourceOptions = {
+      serverFiltering: true,
+      transport: {
+        read: { url: url, type: 'post', dataType: 'json', contentType: 'application/json;charset=utf-8' },
+        parameterMap: (opts, type) => {
+          if (type == 'read') {
+            let filter = opts.filter;
+            if (options.buildFilter != undefined && filter && filter.filters.length) {
+              filter = options.buildFilter(filter);
+            }
+            let group = this.getFilterGroup(filter, field => field);
+            if (group == null) {
+              group = new FilterGroup();
+            }
+            return JSON.stringify(group);
+          }
+        }
+      },
+      requestStart: e => this.OnRequestStart(e)
+    };
+    return new kendo.ui.ComboBox(input, {
+      autoBind: false,
+      filter: options.filter || 'contains',
+      dataTextField: textField,
+      dataValueField: valueField,
+      text: options.selectText || '',
+      value: options.selectValue || '',
+      minLength: options.minLength || 1,
+      delay: 800,
+      dataSource: dataSource
+    });
+  }
   // #endregion
 }
 
@@ -360,82 +527,20 @@ export abstract class GridComponentBase extends ComponentBase {
     if (!$toolbar) {
       return;
     }
+    $($toolbar).on("click", ".btn-refresh-function", e => this.grid.dataSource.read());
     // $($toolbar).on("click", ".toolbar-right .fullscreen", e => this.toggleGridFullScreen(e));
   }
 
   protected GetGridOptions(dataSource: kendo.data.DataSource): kendo.ui.GridOptions {
-    const options: kendo.ui.GridOptions = {
-      dataSource: dataSource,
-      toolbar: [{ name: 'create' }, { name: 'save' }, { name: 'cancel' }],
-      columns: this.GetGridColumns(),
-      navigatable: true,
-      filterable: true,
-      resizable: true,
-      scrollable: true,
-      selectable: false,
-      reorderable: true,
-      columnMenu: false,
-      sortable: { allowUnsort: true, showIndexes: true, mode: 'multiple' },
-      pageable: { refresh: true, pageSizes: [10, 15, 20, 50, 'all'], buttonCount: 5 },
-      editable: { mode: "incell", confirmation: true },
-      saveChanges: e => {
-        if (!confirm('是否提交对表格的更改？')) {
-          e.preventDefault();
-        }
-      }
-    };
+    let columns = this.GetGridColumns();
+    let options = this.kendoui.CreateGridOptions(dataSource, columns);
+    options.toolbar.push({ name: "refresh", template: `<button class="btn-refresh-function k-button k-button-icontext"><i class="k-icon k-i-refresh"></i>刷新</button>` });
     return options;
   }
 
   protected GetDataSourceOptions(): kendo.data.DataSourceOptions {
-    const options: kendo.data.DataSourceOptions = {
-      transport: {
-        read: { url: "api/admin/" + this.moduleName + "/read", type: 'post' },
-        create: { url: "api/admin/" + this.moduleName + "/create", type: 'post', dataType: 'json', contentType: 'application/json;charset=utf-8' },
-        update: { url: "api/admin/" + this.moduleName + "/update", type: 'post', dataType: 'json', contentType: 'application/json;charset=utf-8' },
-        destroy: { url: "api/admin/" + this.moduleName + "/delete", type: 'post', dataType: 'json', contentType: 'application/json;charset=utf-8' },
-        parameterMap: (opts, operation) => {
-          if (operation == 'read') {
-            return this.kendoui.readParameterMap(opts, this.FieldReplace);
-          }
-          if (operation == 'create' || operation == 'update') {
-            return JSON.stringify(opts.models);
-          }
-          if (operation == 'destroy' && opts.models.length) {
-            const ids = new List(opts.models).Select(m => m['Id']).ToArray();
-            return JSON.stringify(ids);
-          }
-          return {};
-        }
-      },
-      group: [],
-      schema: {
-        model: this.GetModel(),
-        data: d => d.Rows,
-        total: d => d.Total
-      },
-      aggregate: [],
-      batch: true,
-      pageSize: 24,
-      serverPaging: true,
-      serverSorting: true,
-      serverFiltering: true,
-      requestStart: e => this.kendoui.OnRequestStart(e),
-      requestEnd: e => {
-        if (e.type == "read" && !e.response.Type) {
-          return;
-        }
-        this.osharp.ajaxResult(e.response, () => this.grid.options.dataSource.read());
-      },
-      change: function () { },
-      error: e => {
-        if (e.status != "error") {
-          return;
-        }
-        this.osharp.ajaxError(e.xhr);
-      }
-    };
-    return options;
+    let model = this.GetModel();
+    return this.kendoui.CreateDataSourceOptions(this.moduleName, model, this.FieldReplace, () => this.grid.dataSource.read());
   }
 
   protected FieldReplace(field: string): string {
@@ -477,17 +582,21 @@ export abstract class GridComponentBase extends ComponentBase {
     if (!this.auth.Create) {
       this.osharp.remove(toolbar, m => m.name == "create");
     }
-    if (!this.auth.Update && !this.auth.Delete) {
+    // 新增、更新、删除都需要保存或取消
+    if (!this.auth.Create && !this.auth.Update && !this.auth.Delete) {
       this.osharp.remove(toolbar, m => m.name == "save");
       this.osharp.remove(toolbar, m => m.name == "cancel");
     }
-    //新增和更新的编辑状态
+    // 新增和更新的编辑状态
     options.beforeEdit = e => {
-      if (e.model.isNew() && !this.auth.Create) {
-        e.preventDefault();
-      }
-      if (!e.model.isNew() && !this.auth.Update) {
-        e.preventDefault();
+      if (e.model.isNew()) {
+        if (!this.auth.Create) {
+          e.preventDefault();
+        }
+      } else {
+        if (!this.auth.Update || !(<any>(e.model)).Updatable) {
+          e.preventDefault();
+        }
       }
     };
 
@@ -512,8 +621,8 @@ export abstract class GridComponentBase extends ComponentBase {
    */
   protected ResizeGrid(init: boolean) {
     const $content = $("#grid-box-" + this.moduleName + " .k-grid-content");
-    let winWidth = window.innerWidth, winHeight = window.innerHeight;
-    let otherHeight = $("layout-header.header").height() + $(".ant-tabs-nav-container").height() + 120 + 40;
+    let winHeight = window.innerHeight;
+    let otherHeight = $("layout-header.header").height() + $(".ant-tabs-nav-container").height() + 120 + 20;
     $content.height(winHeight - otherHeight);
   }
 
@@ -576,14 +685,16 @@ export abstract class TreeListComponentBase extends ComponentBase {
       columns: this.GetTreeListColumns(),
       selectable: true,
       resizable: true,
-      editable: { move: true }
+      filterable: true,
+      sortable: { allowUnsort: true, mode: 'multiple' },
+      editable: { move: false }
     };
     return options;
   }
   protected GetDataSourceOptions(): kendo.data.DataSourceOptions {
     const options: kendo.data.DataSourceOptions = {
       transport: {
-        read: { url: "api/admin/" + this.moduleName + "/read", type: 'post' },
+        read: { url: "api/admin/" + this.moduleName + "/read", type: 'post', dataType: 'json', contentType: 'application/json;charset=utf-8' },
         create: { url: "api/admin/" + this.moduleName + "/create", type: 'post', dataType: 'json', contentType: 'application/json;charset=utf-8' },
         update: { url: "api/admin/" + this.moduleName + "/update", type: 'post', dataType: 'json', contentType: 'application/json;charset=utf-8' },
         destroy: { url: "api/admin/" + this.moduleName + "/delete", type: 'post' },
@@ -622,7 +733,7 @@ export abstract class TreeListComponentBase extends ComponentBase {
    * @param options TreeList选项
    */
   protected FilterTreeListAuth(options: kendo.ui.TreeListOptions) {
-    //命令列
+    // 命令列
     let cmdColumn = options.columns && options.columns.find(m => m.command != null);
     let cmds = cmdColumn && cmdColumn.command as kendo.ui.TreeListColumnCommandItem[];
     if (cmds) {

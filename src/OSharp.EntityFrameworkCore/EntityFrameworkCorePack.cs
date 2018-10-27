@@ -7,9 +7,13 @@
 //  <last-date>2018-06-23 15:24</last-date>
 // -----------------------------------------------------------------------
 
+using System;
+using System.ComponentModel;
+
 using Microsoft.Extensions.DependencyInjection;
 
 using OSharp.Core.Packs;
+using OSharp.Entity.Transactions;
 
 
 namespace OSharp.Entity
@@ -17,6 +21,7 @@ namespace OSharp.Entity
     /// <summary>
     /// EntityFrameworkCore模块
     /// </summary>
+    [Description("EntityFrameworkCore模块")]
     public class EntityFrameworkCorePack : OsharpPack
     {
         /// <summary>
@@ -33,11 +38,23 @@ namespace OSharp.Entity
         {
             services.AddSingleton<IEntityConfigurationTypeFinder, EntityConfigurationTypeFinder>();
             services.AddSingleton<IDbContextResolver, DbContextResolver>();
+            services.AddSingleton<DbContextModelCache>();
 
-            services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped(typeof(IRepository<,>), typeof(Repository<,>));
+            services.AddScoped<IUnitOfWorkManager, UnitOfWorkManager>();
 
             return services;
+        }
+
+        /// <summary>
+        /// 应用模块服务
+        /// </summary>
+        /// <param name="provider">服务提供者</param>
+        public override void UsePack(IServiceProvider provider)
+        {
+            IEntityConfigurationTypeFinder finder = provider.GetService<IEntityConfigurationTypeFinder>();
+            finder?.Initialize();
+            IsEnabled = true;
         }
     }
 }

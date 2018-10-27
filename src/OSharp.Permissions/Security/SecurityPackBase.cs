@@ -15,7 +15,6 @@ using OSharp.Core.EntityInfos;
 using OSharp.Core.Functions;
 using OSharp.Core.Modules;
 using OSharp.Core.Packs;
-using OSharp.Entity;
 using OSharp.Secutiry;
 
 
@@ -102,7 +101,7 @@ namespace OSharp.Security
         }
 
         /// <summary>
-        /// 使用模块服务
+        /// 应用模块服务
         /// </summary>
         /// <param name="provider">服务提供者</param>
         public override void UsePack(IServiceProvider provider)

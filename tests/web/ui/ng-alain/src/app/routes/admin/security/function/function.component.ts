@@ -45,7 +45,8 @@ export class FunctionComponent extends GridComponentBase implements AfterViewIni
         IsAjax: { type: "boolean", editable: false },
         Area: { type: "string", editable: false },
         Controller: { type: "string", editable: false },
-        Action: { type: "string", editable: false }
+        Action: { type: "string", editable: false },
+        Updatable: { type: "boolean", editable: false },
       }
     };
   }
@@ -104,7 +105,13 @@ export class FunctionComponent extends GridComponentBase implements AfterViewIni
   protected GetDataSourceOptions(): kendo.data.DataSourceOptions {
     let options = super.GetDataSourceOptions();
     options.group = [{ field: "Area" }, { field: "Controller" }];
-    options.pageSize = 19;
+    options.pageSize = 20;
+    return options;
+  }
+
+  protected GetGridOptions(dataSource: kendo.data.DataSource): kendo.ui.GridOptions {
+    let options = super.GetGridOptions(dataSource);
+    options.columnMenu = { sortable: false };
     return options;
   }
 }

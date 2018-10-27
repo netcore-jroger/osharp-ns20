@@ -7,7 +7,6 @@
 //  <last-date>2018-07-04 4:34</last-date>
 // -----------------------------------------------------------------------
 
-using System;
 using System.Collections.Generic;
 
 
@@ -40,6 +39,11 @@ namespace OSharp.Core.EntityInfos
         /// 获取或设置 属性数据类型
         /// </summary>
         public string TypeName { get; set; }
+
+        /// <summary>
+        /// 获取或设置 是否用户字段
+        /// </summary>
+        public bool IsUserFlag { get; set; }
 
         /// <summary>
         /// 获取或设置 数据值范围集合（主要针对枚举类型）

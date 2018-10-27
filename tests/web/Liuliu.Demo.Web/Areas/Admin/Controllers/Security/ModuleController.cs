@@ -12,7 +12,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Threading.Tasks;
 
 using Liuliu.Demo.Security;
 using Liuliu.Demo.Security.Dtos;
@@ -20,18 +19,16 @@ using Liuliu.Demo.Security.Entities;
 
 using Microsoft.AspNetCore.Mvc;
 
-using OSharp.AspNetCore.Mvc.Filters;
-using OSharp.AspNetCore.UI;
+using OSharp.Core.Functions;
 using OSharp.Core.Modules;
 using OSharp.Data;
 using OSharp.Entity;
 using OSharp.Filter;
-using OSharp.Mapping;
 
 
 namespace Liuliu.Demo.Web.Areas.Admin.Controllers
 {
-    [ModuleInfo(Order = 1, Position = "Security")]
+    [ModuleInfo(Order = 1, Position = "Security", PositionName = "权限安全模块")]
     [Description("管理-模块信息")]
     public class ModuleController : AdminApiController
     {
@@ -51,9 +48,8 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
         [Description("读取")]
         public List<ModuleOutputDto> Read()
         {
-            ListFilterGroup group = new ListFilterGroup(Request);
-            Expression<Func<Module, bool>> predicate = FilterHelper.GetExpression<Module>(group);
-            List<ModuleOutputDto> modules = _securityManager.Modules.Where(predicate).OrderBy(m => m.OrderCode).ToOutput<ModuleOutputDto>().ToList();
+            Expression<Func<Module, bool>> predicate = m => true;
+            List<ModuleOutputDto> modules = _securityManager.Modules.Where(predicate).OrderBy(m => m.OrderCode).ToOutput<Module, ModuleOutputDto>().ToList();
             return modules;
         }
 
@@ -90,7 +86,7 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
             var result = GetModulesWithChecked(rootIds, checkedModuleIds);
             return result;
         }
-
+        
         private List<object> GetModulesWithChecked(int[] rootIds, int[] checkedModuleIds)
         {
             var modules = _securityManager.Modules.Where(m => rootIds.Contains(m.Id)).OrderBy(m => m.OrderCode).Select(m => new
@@ -104,6 +100,10 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
             List<object> nodes = new List<object>();
             foreach (var item in modules)
             {
+                if (item.ChildIds.Count == 0 && !IsRoleLimit(item.Id))
+                {
+                    continue;
+                }
                 var node = new
                 {
                     item.Id,
@@ -114,9 +114,22 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
                     item.Remark,
                     Items = item.ChildIds.Count > 0 ? GetModulesWithChecked(item.ChildIds.ToArray(), checkedModuleIds) : new List<object>()
                 };
+
+                if (node.Items.Count == 0 && !IsRoleLimit(node.Id))
+                {
+                    continue;
+                }
+
                 nodes.Add(node);
             }
             return nodes;
+        }
+
+        private bool IsRoleLimit(int moduleId)
+        {
+            return _securityManager.Functions
+                .Where(m => _securityManager.ModuleFunctions.Where(n => n.ModuleId == moduleId).Select(n => n.FunctionId).Contains(m.Id))
+                .Any(m => m.AccessType == FunctionAccessType.RoleLimit);
         }
 
         /// <summary>
@@ -127,9 +140,8 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
         [ModuleInfo]
         [DependOnFunction("Read")]
         [Description("读取模块功能")]
-        public PageData<FunctionOutputDto2> ReadFunctions()
+        public PageData<FunctionOutputDto2> ReadFunctions(PageRequest request)
         {
-            PageRequest request = new PageRequest(Request);
             if (request.FilterGroup.Rules.Count == 0)
             {
                 return new PageData<FunctionOutputDto2>();

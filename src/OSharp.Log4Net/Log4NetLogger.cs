@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 using log4net;
 
@@ -11,6 +9,9 @@ using OSharp.Data;
 
 namespace OSharp.Log4Net
 {
+    /// <summary>
+    /// log4net日志记录
+    /// </summary>
     public class Log4NetLogger : ILogger
     {
         private readonly ILog _log;

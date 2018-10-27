@@ -20,6 +20,7 @@ using Microsoft.Extensions.Options;
 using OSharp.Audits;
 using OSharp.Core.Options;
 using OSharp.Dependency;
+using OSharp.Entity.Transactions;
 using OSharp.EventBuses;
 
 
@@ -51,6 +52,35 @@ namespace OSharp.Entity
         }
 
         /// <summary>
+        /// 获取或设置 所在上下文组
+        /// </summary>
+        public UnitOfWork UnitOfWork { get; set; }
+
+        /// <summary>
+        /// 开启或使用现有事务
+        /// </summary>
+        public void BeginOrUseTransaction()
+        {
+            if (UnitOfWork == null)
+            {
+                return;
+            }
+            UnitOfWork.BeginOrUseTransaction();
+        }
+
+        /// <summary>
+        /// 异步开启或使用现有事务
+        /// </summary>
+        public async Task BeginOrUseTransactionAsync(CancellationToken cancellationToken)
+        {
+            if (UnitOfWork == null)
+            {
+                return;
+            }
+            await UnitOfWork.BeginOrUseTransactionAsync(cancellationToken);
+        }
+
+        /// <summary>
         /// 创建上下文数据模型时，对各个实体类的数据库映射细节进行配置
         /// </summary>
         /// <param name="modelBuilder">上下文数据模型构建器</param>
@@ -66,9 +96,21 @@ namespace OSharp.Entity
             }
             _logger?.LogInformation($"上下文“{contextType}”注册了{registers.Length}个实体类");
         }
+        
+        /// <summary>
+        /// 模型配置
+        /// </summary>
+        /// <param name="optionsBuilder"></param>
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            if (_osharpDbOptions != null && _osharpDbOptions.LazyLoadingProxiesEnabled)
+            {
+                optionsBuilder.UseLazyLoadingProxies();
+            }
+        }
 
         /// <summary>
-        ///     将在此上下文中所做的所有更改保存到数据库中。
+        ///     将在此上下文中所做的所有更改保存到数据库中，同时自动开启事务或使用现有同连接事务
         /// </summary>
         /// <remarks>
         ///     此方法将自动调用 <see cref="M:Microsoft.EntityFrameworkCore.ChangeTracking.ChangeTracker.DetectChanges" /> 
@@ -88,11 +130,15 @@ namespace OSharp.Entity
         /// </exception>
         public override int SaveChanges()
         {
-            IList<AuditEntity> auditEntities = new List<AuditEntity>();
+            IList<AuditEntityEntry> auditEntities = new List<AuditEntityEntry>();
             if (_osharpDbOptions != null && _osharpDbOptions.AuditEntityEnabled && ServiceLocator.InScoped())
             {
                 auditEntities = this.GetAuditEntities();
             }
+            var d = this.Database;
+            //开启或使用现有事务
+            BeginOrUseTransaction();
+
             int count = base.SaveChanges();
             if (count > 0 && auditEntities.Count > 0 && ServiceLocator.InScoped())
             {
@@ -104,7 +150,7 @@ namespace OSharp.Entity
         }
 
         /// <summary>
-        ///     异步地将此上下文中的所有更改保存到数据库中。
+        ///     异步地将此上下文中的所有更改保存到数据库中，同时自动开启事务或使用现有同连接事务
         /// </summary>
         /// <remarks>
         ///     <para>
@@ -130,11 +176,15 @@ namespace OSharp.Entity
         /// </exception>
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
         {
-            IList<AuditEntity> auditEntities = new List<AuditEntity>();
+            IList<AuditEntityEntry> auditEntities = new List<AuditEntityEntry>();
             if (_osharpDbOptions != null && _osharpDbOptions.AuditEntityEnabled && ServiceLocator.InScoped())
             {
                 auditEntities = this.GetAuditEntities();
             }
+
+            //开启或使用现有事务
+            await BeginOrUseTransactionAsync(cancellationToken);
+
             int count = await base.SaveChangesAsync(cancellationToken);
             if (count > 0 && auditEntities.Count > 0 && ServiceLocator.InScoped())
             {
@@ -145,5 +195,17 @@ namespace OSharp.Entity
             return count;
         }
 
+        #region Overrides of DbContext
+
+        /// <summary>
+        ///     Releases the allocated resources for this context.
+        /// </summary>
+        public override void Dispose()
+        {
+            base.Dispose();
+            UnitOfWork = null;
+        }
+
+        #endregion
     }
 }

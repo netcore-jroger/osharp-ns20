@@ -27,13 +27,12 @@ using OSharp.Data;
 using OSharp.Entity;
 using OSharp.Extensions;
 using OSharp.Filter;
-using OSharp.Mapping;
 using OSharp.Security;
 
 
 namespace Liuliu.Demo.Web.Areas.Admin.Controllers
 {
-    [ModuleInfo(Order = 5, Position = "Security")]
+    [ModuleInfo(Order = 5, Position = "Security", PositionName = "权限安全模块")]
     [Description("管理-实体信息")]
     public class EntityInfoController : AdminApiController
     {
@@ -51,9 +50,8 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
         [HttpPost]
         [ModuleInfo]
         [Description("读取")]
-        public PageData<EntityInfoOutputDto> Read()
+        public PageData<EntityInfoOutputDto> Read(PageRequest request)
         {
-            PageRequest request = new PageRequest(Request);
             if (request.PageCondition.SortConditions.Length == 0)
             {
                 request.PageCondition.SortConditions = new[] { new SortCondition("TypeName") };
@@ -71,10 +69,15 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
         [Description("读取节点")]
         public List<EntityInfoNode> ReadNode()
         {
-            List<EntityInfoNode> nodes = _securityManager.EntityInfos.OrderBy(m => m.TypeName).ToOutput<EntityInfoNode>().ToList();
+            List<EntityInfoNode> nodes = _securityManager.EntityInfos.OrderBy(m => m.TypeName).ToOutput<EntityInfo, EntityInfoNode>().ToList();
             return nodes;
         }
 
+        /// <summary>
+        /// 读取实体属性信息
+        /// </summary>
+        /// <param name="typeName">实体类型</param>
+        /// <returns>JSON操作结果</returns>
         [HttpGet]
         [Description("读取实体属性信息")]
         public AjaxResult ReadProperties(string typeName)

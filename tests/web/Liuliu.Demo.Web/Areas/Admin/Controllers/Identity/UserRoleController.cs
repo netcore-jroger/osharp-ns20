@@ -28,7 +28,7 @@ using OSharp.Filter;
 
 namespace Liuliu.Demo.Web.Areas.Admin.Controllers
 {
-    [ModuleInfo(Order = 3, Position = "Identity")]
+    [ModuleInfo(Order = 3, Position = "Identity", PositionName = "身份认证模块")]
     [Description("管理-用户角色信息")]
     public class UserRoleController : AdminApiController
     {
@@ -46,9 +46,8 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
         [HttpPost]
         [ModuleInfo]
         [Description("读取")]
-        public PageData<UserRoleOutputDto> Read()
+        public PageData<UserRoleOutputDto> Read(PageRequest request)
         {
-            PageRequest request = new PageRequest(Request);
             Expression<Func<UserRole, bool>> predicate = FilterHelper.GetExpression<UserRole>(request.FilterGroup);
             PageResult<UserRoleOutputDto> page = _identityContract.UserRoles.ToPage<UserRole, UserRoleOutputDto>(predicate, request.PageCondition);
             return page.ToPageData();

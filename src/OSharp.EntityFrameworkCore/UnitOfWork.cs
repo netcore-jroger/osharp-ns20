@@ -9,16 +9,20 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Data.Common;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 
-using OSharp.Core;
 using OSharp.Core.Options;
 using OSharp.Entity.Transactions;
 using OSharp.Exceptions;
-using OSharp.Extensions;
+using OSharp.Reflection;
 
 
 namespace OSharp.Entity
@@ -29,21 +33,18 @@ namespace OSharp.Entity
     public class UnitOfWork : IUnitOfWork
     {
         private readonly IServiceProvider _serviceProvider;
+        private readonly DbContextResolveOptions _resolveOptions;
+        private readonly List<DbContextBase> _dbContexts = new List<DbContextBase>();
+        private DbTransaction _transaction;
 
         /// <summary>
         /// 初始化一个<see cref="UnitOfWork"/>类型的新实例
         /// </summary>
-        public UnitOfWork(IServiceProvider serviceProvider)
+        public UnitOfWork(IServiceProvider serviceProvider, DbContextResolveOptions resolveOptions)
         {
             _serviceProvider = serviceProvider;
-            HasCommited = false;
-            ActiveTransactionInfos = new Dictionary<string, ActiveTransactionInfo>();
+            _resolveOptions = resolveOptions;
         }
-
-        /// <summary>
-        /// 获取 活动的事务信息字典，以连接字符串为健，活动事务信息为值
-        /// </summary>
-        protected IDictionary<string, ActiveTransactionInfo> ActiveTransactionInfos { get; }
 
         /// <summary>
         /// 获取 事务是否已提交
@@ -51,107 +52,205 @@ namespace OSharp.Entity
         public bool HasCommited { get; private set; }
 
         /// <summary>
-        /// 获取指定数据上下文类型<typeparamref name="TEntity"/>的实例
+        /// 获取指定数据上下文类型<typeparamref name="TEntity"/>的实例，并将同数据库连接字符串的上下文实例进行分组归类
         /// </summary>
         /// <typeparam name="TEntity">实体类型</typeparam>
         /// <typeparam name="TKey">实体主键类型</typeparam>
         /// <returns><typeparamref name="TEntity"/>所属上下文类的实例</returns>
-        public IDbContext GetDbContext<TEntity, TKey>() where TEntity : IEntity<TKey> where TKey : IEquatable<TKey>
+        public virtual IDbContext GetDbContext<TEntity, TKey>() where TEntity : IEntity<TKey> where TKey : IEquatable<TKey>
         {
-            IEntityConfigurationTypeFinder typeFinder = _serviceProvider.GetService<IEntityConfigurationTypeFinder>();
             Type entityType = typeof(TEntity);
+            return GetDbContext(entityType);
+        }
+
+        /// <summary>
+        /// 获取指定数据实体的上下文类型
+        /// </summary>
+        /// <param name="entityType">实体类型</param>
+        /// <returns>实体所属上下文实例</returns>
+        public IDbContext GetDbContext(Type entityType)
+        {
+            Type baseType = typeof(IEntity<>);
+            if (!entityType.IsBaseOn(baseType))
+            {
+                throw new OsharpException($"类型“{entityType}”不是实体类型");
+            }
+
+            IEntityConfigurationTypeFinder typeFinder = _serviceProvider.GetService<IEntityConfigurationTypeFinder>();
             Type dbContextType = typeFinder.GetDbContextTypeForEntity(entityType);
 
-            DbContext dbContext;
-            OSharpDbContextOptions dbContextOptions = GetDbContextResolveOptions(dbContextType);
-            DbContextResolveOptions resolveOptions = new DbContextResolveOptions(dbContextOptions);
-            IDbContextResolver contextResolver = _serviceProvider.GetService<IDbContextResolver>();
-            ActiveTransactionInfo transInfo = ActiveTransactionInfos.GetOrDefault(resolveOptions.ConnectionString);
-            //连接字符串的事务不存在，添加起始上下文事务信息
-            if (transInfo == null)
+            //已存在上下文对象，直接返回
+            DbContextBase dbContext = _dbContexts.FirstOrDefault(m => m.GetType() == dbContextType);
+            if (dbContext != null)
             {
-                resolveOptions.ExistingConnection = null;
-                dbContext = contextResolver.Resolve(resolveOptions);
-                if (!dbContext.ExistsRelationalDatabase())
+                return dbContext;
+            }
+            IDbContextResolver contextResolver = _serviceProvider.GetService<IDbContextResolver>();
+            dbContext = (DbContextBase)contextResolver.Resolve(_resolveOptions);
+            if (!dbContext.ExistsRelationalDatabase())
+            {
+                throw new OsharpException($"数据上下文“{dbContext.GetType().FullName}”的数据库不存在，请通过 Migration 功能进行数据迁移创建数据库。");
+            }
+            if (_resolveOptions.ExistingConnection == null)
+            {
+                _resolveOptions.ExistingConnection = dbContext.Database.GetDbConnection();
+            }
+
+            dbContext.UnitOfWork = this;
+            _dbContexts.Add(dbContext);
+
+            return dbContext;
+        }
+
+        /// <summary>
+        /// 对数据库连接开启事务
+        /// </summary>
+        public virtual void BeginOrUseTransaction()
+        {
+            if (_dbContexts.Count == 0)
+            {
+                return;
+            }
+            if (_transaction?.Connection == null)
+            {
+                DbConnection connection = _resolveOptions.ExistingConnection;
+                if (connection.State != ConnectionState.Open)
                 {
-                    throw new OsharpException($"数据上下文“{dbContext.GetType().FullName}”的数据库不存在，请通过 Migration 功能进行数据迁移创建数据库。");
+                    connection.Open();
                 }
 
-                IDbContextTransaction transaction = dbContext.Database.BeginTransaction();
-                transInfo = new ActiveTransactionInfo(transaction, dbContext);
-                ActiveTransactionInfos[resolveOptions.ConnectionString] = transInfo;
+                _transaction = connection.BeginTransaction();
             }
-            else
+
+            foreach (DbContextBase context in _dbContexts)
             {
-                resolveOptions.ExistingConnection = transInfo.DbContextTransaction.GetDbTransaction().Connection;
-                //相同连接串相同上下文类型并且已存在对象，直接返回上下文对象
-                if (transInfo.StarterDbContext.GetType() == resolveOptions.DbContextType)
+                if (context.Database.CurrentTransaction != null && context.Database.CurrentTransaction.GetDbTransaction() == _transaction)
                 {
-                    return transInfo.StarterDbContext as IDbContext;
+                    continue;
                 }
-                dbContext = contextResolver.Resolve(resolveOptions);
-                if (dbContext.IsRelationalTransaction())
+                if (context.IsRelationalTransaction())
                 {
-                    dbContext.Database.UseTransaction(transInfo.DbContextTransaction.GetDbTransaction());
+                    context.Database.UseTransaction(_transaction);
                 }
                 else
                 {
-                    dbContext.Database.BeginTransaction();
+                    context.Database.BeginTransaction();
                 }
-                transInfo.AttendedDbContexts.Add(dbContext);
             }
-            return dbContext as IDbContext;
+
+            HasCommited = false;
+        }
+
+        /// <summary>
+        /// 对数据库连接开启事务
+        /// </summary>
+        /// <param name="cancellationToken">异步取消标记</param>
+        /// <returns></returns>
+        public virtual async Task BeginOrUseTransactionAsync(CancellationToken cancellationToken = default(CancellationToken))
+        {
+            if (_dbContexts.Count == 0)
+            {
+                return;
+            }
+            if (_transaction?.Connection == null)
+            {
+                DbConnection connection = _resolveOptions.ExistingConnection;
+                if (connection.State != ConnectionState.Open)
+                {
+                    await connection.OpenAsync(cancellationToken);
+                }
+
+                _transaction = connection.BeginTransaction();
+            }
+
+            foreach (DbContextBase context in _dbContexts)
+            {
+                if (context.Database.CurrentTransaction != null && context.Database.CurrentTransaction.GetDbTransaction() == _transaction)
+                {
+                    continue;
+                }
+                if (context.IsRelationalTransaction())
+                {
+                    context.Database.UseTransaction(_transaction);
+                }
+                else
+                {
+                    await context.Database.BeginTransactionAsync(cancellationToken);
+                }
+            }
+
+            HasCommited = false;
         }
 
         /// <summary>
         /// 提交当前上下文的事务更改
         /// </summary>
-        public void Commit()
+        public virtual void Commit()
         {
-            if (HasCommited)
+            if (HasCommited || _dbContexts.Count == 0 || _transaction == null)
             {
                 return;
             }
-            foreach (ActiveTransactionInfo transInfo in ActiveTransactionInfos.Values)
-            {
-                transInfo.DbContextTransaction.Commit();
 
-                foreach (DbContext attendedDbContext in transInfo.AttendedDbContexts)
+            _transaction.Commit();
+            foreach (DbContextBase context in _dbContexts)
+            {
+                if (context.IsRelationalTransaction())
                 {
-                    if (attendedDbContext.IsRelationalTransaction())
-                    {
-                        //关系型数据库共享事务
-                        continue;
-                    }
-                    attendedDbContext.Database.CommitTransaction();
+                    context.Database.CurrentTransaction.Dispose();
+                    //关系型数据库共享事务
+                    continue;
                 }
+
+                context.Database.CommitTransaction();
             }
+
             HasCommited = true;
         }
 
-        private OSharpDbContextOptions GetDbContextResolveOptions(Type dbContextType)
+        /// <summary>
+        /// 回滚所有事务
+        /// </summary>
+        public virtual void Rollback()
         {
-            OSharpDbContextOptions dbContextOptions = _serviceProvider.GetOSharpOptions()?.GetDbContextOptions(dbContextType);
-            if (dbContextOptions == null)
+            if (_transaction?.Connection != null)
             {
-                throw new OsharpException($"无法找到数据上下文“{dbContextType}”的配置信息");
+                _transaction.Rollback();
             }
-            return dbContextOptions;
+            foreach (var context in _dbContexts)
+            {
+                if (context.IsRelationalTransaction())
+                {
+                    CleanChanges(context);
+                    if (context.Database.CurrentTransaction != null)
+                    {
+                        context.Database.CurrentTransaction.Rollback();
+                        context.Database.CurrentTransaction.Dispose();
+                    }
+                    continue;
+                }
+                context.Database.RollbackTransaction();
+            }
+            HasCommited = true;
+        }
+        
+        private static void CleanChanges(DbContext context)
+        {
+            var entries = context.ChangeTracker.Entries().ToArray();
+            for (int i = 0; i < entries.Length; i++)
+            {
+                entries[i].State = EntityState.Detached;
+            }
         }
 
         /// <summary>释放对象.</summary>
         public void Dispose()
         {
-            foreach (ActiveTransactionInfo transInfo in ActiveTransactionInfos.Values)
+            _transaction?.Dispose();
+            foreach (DbContextBase context in _dbContexts)
             {
-                transInfo.DbContextTransaction.Dispose();
-                foreach (DbContext attendedDbContext in transInfo.AttendedDbContexts)
-                {
-                    attendedDbContext.Dispose();
-                }
-                transInfo.StarterDbContext.Dispose();
+                context.Dispose();
             }
-            ActiveTransactionInfos.Clear();
         }
     }
 }

@@ -3,7 +3,6 @@
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
 
-using OSharp.Core;
 using OSharp.Core.Functions;
 using OSharp.UnitTest.Infrastructure;
 
@@ -70,6 +69,7 @@ namespace OSharp.Caching.Tests
             _cache.Remove(key);
             _cache.Get<TestEntity>(key).ShouldBeNull();
 
+            function.CacheExpirationSeconds = 10;
             key = "key005";
             newEntity = _cache.Get(key, () => entity, function);
             newEntity.ShouldNotBeNull();

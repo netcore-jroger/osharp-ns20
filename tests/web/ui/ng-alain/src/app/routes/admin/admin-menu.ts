@@ -1,9 +1,8 @@
 import { Menu } from "@delon/theme";
 
 // 导航菜单
-const headingMain = { text: '导航菜单', group: true };
-
-const home = { text: '主页', link: '/admin/dashboard', icon: 'icon-home' };
+const headingMain: Menu = { text: '导航菜单', group: true, children: [] };
+const home: Menu = { text: '主页', link: '/admin/dashboard', icon: 'icon-home' };
 
 export const adminMenu: Menu[] = [
   {
@@ -26,7 +25,7 @@ export const adminMenu: Menu[] = [
           { text: '用户功能管理', link: '/admin/security/user-function', icon: 'icon-magnet' },
           { text: '实体信息管理', link: '/admin/security/entityinfo', icon: 'icon-puzzle' },
           { text: '角色数据管理', link: '/admin/security/role-entity', icon: 'icon-vector' },
-          { text: '用户数据管理', link: '/admin/security/user-entityinfo', icon: 'icon-social-reddit' }
+          // { text: '用户数据管理', link: '/admin/security/user-entityinfo', icon: 'icon-social-reddit' }
         ]
       }
     ]
@@ -34,7 +33,10 @@ export const adminMenu: Menu[] = [
     text: '系统模块', group: true, children: [
       {
         text: '系统管理', group: true, icon: 'icon-globe', children: [
-          { text: '系统设置', link: '/admin/system/settings', icon: 'icon-settings' }
+          // { text: '系统设置', link: '/admin/system/settings', icon: 'icon-settings' },
+          { text: '操作审计', link: '/admin/system/audit-operation', icon: 'icon-settings' },
+          { text: '数据审计', link: '/admin/system/audit-entity', icon: 'icon-settings' },
+          { text: '模块包', link: '/admin/system/pack', icon: 'icon-settings' },
         ]
       }
     ]

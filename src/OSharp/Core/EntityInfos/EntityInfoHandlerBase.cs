@@ -19,6 +19,9 @@ using OSharp.Data;
 using OSharp.Dependency;
 using OSharp.Entity;
 using OSharp.Exceptions;
+using OSharp.Extensions;
+using OSharp.Json;
+using OSharp.Reflection;
 
 
 namespace OSharp.Core.EntityInfos
@@ -81,8 +84,18 @@ namespace OSharp.Core.EntityInfos
             {
                 RefreshCache();
             }
-            return _entityInfos.FirstOrDefault(m => m.TypeName == type.FullName)
-                ?? _entityInfos.FirstOrDefault(m => type.BaseType != null && m.TypeName == type.BaseType.FullName);
+            string typeName = type.GetFullNameWithModule();
+            IEntityInfo entityInfo = _entityInfos.FirstOrDefault(m => m.TypeName == typeName);
+            if (entityInfo != null)
+            {
+                return entityInfo;
+            }
+            if (type.BaseType == null)
+            {
+                return null;
+            }
+            typeName = type.BaseType.GetFullNameWithModule();
+            return _entityInfos.FirstOrDefault(m => m.TypeName == typeName);
         }
 
         /// <summary>
@@ -114,12 +127,18 @@ namespace OSharp.Core.EntityInfos
         /// </summary>
         protected virtual void SyncToDatabase(IServiceProvider scopedProvider, List<TEntityInfo> entityInfos)
         {
+            //检查指定实体的Hash值，决定是否需要进行数据库同步
+            if (!entityInfos.CheckSyncByHash(scopedProvider, _logger))
+            {
+                return;
+            }
+
             IRepository<TEntityInfo, Guid> repository = scopedProvider.GetService<IRepository<TEntityInfo, Guid>>();
             if (repository == null)
             {
                 throw new OsharpException("IRepository<,>的服务未找到，请初始化 EntityFrameworkCoreModule 模块");
             }
-            TEntityInfo[] dbItems = repository.TrackEntities.ToArray();
+            TEntityInfo[] dbItems = repository.TrackQuery(null, false).ToArray();
 
             //删除的实体信息
             TEntityInfo[] removeItems = dbItems.Except(entityInfos, EqualityHelper<TEntityInfo>.CreateComparer(m => m.TypeName)).ToArray();
@@ -188,8 +207,7 @@ namespace OSharp.Core.EntityInfos
         protected virtual TEntityInfo[] GetFromDatabase(IServiceProvider scopedProvider)
         {
             IRepository<TEntityInfo, Guid> repository = scopedProvider.GetService<IRepository<TEntityInfo, Guid>>();
-            return repository.Entities.ToArray();
+            return repository.Query(null, false).ToArray();
         }
-
     }
 }

@@ -9,14 +9,14 @@
 
 using System;
 
-using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
-using OSharp.Core;
+using OSharp.AspNetCore;
 using OSharp.Core.Packs;
+using OSharp.Exceptions;
 
 
-namespace OSharp.AspNetCore
+namespace Microsoft.AspNetCore.Builder
 {
     /// <summary>
     /// <see cref="IApplicationBuilder"/>辅助扩展方法
@@ -24,12 +24,17 @@ namespace OSharp.AspNetCore
     public static class ApplicationBuilderExtensions
     {
         /// <summary>
-        /// OSharp框架初始化
+        /// OSharp框架初始化，适用于AspNetCore环境
         /// </summary>
         public static IApplicationBuilder UseOSharp(this IApplicationBuilder app)
         {
-            IServiceProvider serviceProvider = app.ApplicationServices;
-            serviceProvider.UseOSharp();
+            IServiceProvider provider = app.ApplicationServices;
+            if (!(provider.GetService<IOsharpPackManager>() is IAspUsePack aspPackManager))
+            {
+                throw new OsharpException("接口 IOsharpPackManager 的注入类型不正确，该类型应同时实现接口 IAspUsePack");
+            }
+            aspPackManager.UsePack(app);
+
             return app;
         }
 

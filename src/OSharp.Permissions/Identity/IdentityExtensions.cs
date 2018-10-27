@@ -7,11 +7,7 @@
 //  <last-date>2017-11-16 11:53</last-date>
 // -----------------------------------------------------------------------
 
-using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Security.Claims;
-using System.Security.Principal;
 
 using Microsoft.AspNetCore.Identity;
 
@@ -35,7 +31,7 @@ namespace OSharp.Identity
             return identityResult.Succeeded
                 ? new OperationResult(OperationResultType.Success)
                 : new OperationResult(OperationResultType.Error,
-                    identityResult.Errors.Select(m => m.Code.IsMissing() ? m.Description : $"{m.Code}:{m.Description}").ExpandAndToString());
+                    identityResult.Errors.Select(m => m.Description).ExpandAndToString());
         }
 
         /// <summary>
@@ -46,7 +42,7 @@ namespace OSharp.Identity
             return identityResult.Succeeded
                 ? new OperationResult<TUser>(OperationResultType.Success, "Success", user)
                 : new OperationResult<TUser>(OperationResultType.Error,
-                    identityResult.Errors.Select(m => m.Code.IsMissing() ? m.Description : $"{m.Code}:{m.Description}").ExpandAndToString());
+                    identityResult.Errors.Select(m => m.Description).ExpandAndToString());
         }
 
         /// <summary>

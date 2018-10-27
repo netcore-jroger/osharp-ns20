@@ -20,7 +20,6 @@ using OSharp.Data;
 using OSharp.Dependency;
 using OSharp.Entity;
 using OSharp.Exceptions;
-using OSharp.Extensions;
 using OSharp.Reflection;
 
 
@@ -39,7 +38,7 @@ namespace OSharp.Core.Functions
         /// </summary>
         protected FunctionHandlerBase()
         {
-            Logger = ServiceLocator.Instance.GetService<ILoggerFactory>().CreateLogger(GetType());
+            Logger = ServiceLocator.Instance.GetLogger(GetType());
         }
 
         /// <summary>
@@ -226,12 +225,17 @@ namespace OSharp.Core.Functions
                 return;
             }
 
+            if (!functions.CheckSyncByHash(scopedProvider, Logger))
+            {
+                return;
+            }
+
             IRepository<TFunction, Guid> repository = scopedProvider.GetService<IRepository<TFunction, Guid>>();
             if (repository == null)
             {
                 throw new OsharpException("IRepository<,>的服务未找到，请初始化 EntityFrameworkCoreModule 模块");
             }
-            TFunction[] dbItems = repository.TrackEntities.ToArray();
+            TFunction[] dbItems = repository.TrackQuery(null, false).ToArray();
 
             //删除的功能
             TFunction[] removeItems = dbItems.Except(functions,
@@ -324,7 +328,7 @@ namespace OSharp.Core.Functions
         protected virtual TFunction[] GetFromDatabase(IServiceProvider scopedProvider)
         {
             IRepository<TFunction, Guid> repository = scopedProvider.GetService<IRepository<TFunction, Guid>>();
-            return repository.Entities.ToArray();
+            return repository.Query(null, false).ToArray();
         }
 
     }

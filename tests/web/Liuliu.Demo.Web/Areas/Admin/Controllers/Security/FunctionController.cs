@@ -19,8 +19,10 @@ using Liuliu.Demo.Security.Dtos;
 
 using Microsoft.AspNetCore.Mvc;
 
+using OSharp.AspNetCore.Mvc;
 using OSharp.AspNetCore.Mvc.Filters;
 using OSharp.AspNetCore.UI;
+using OSharp.Caching;
 using OSharp.Core.Functions;
 using OSharp.Core.Modules;
 using OSharp.Data;
@@ -31,7 +33,7 @@ using OSharp.Security;
 
 namespace Liuliu.Demo.Web.Areas.Admin.Controllers
 {
-    [ModuleInfo(Order = 2, Position = "Security")]
+    [ModuleInfo(Order = 2, Position = "Security", PositionName = "权限安全模块")]
     [Description("管理-功能信息")]
     public class FunctionController : AdminApiController
     {
@@ -49,20 +51,16 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
         [HttpPost]
         [ModuleInfo]
         [Description("读取")]
-        public PageData<FunctionOutputDto> Read()
+        public PageData<FunctionOutputDto> Read(PageRequest request)
         {
-            PageRequest request = new PageRequest(Request);
-            if (request.PageCondition.SortConditions.Length == 0)
-            {
-                request.PageCondition.SortConditions = new[]
-                {
-                    new SortCondition("Area"),
-                    new SortCondition("Controller"),
-                    new SortCondition("IsController", ListSortDirection.Descending)
-                };
-            }
+            IFunction function = this.GetExecuteFunction();
+            request.AddDefaultSortCondition(
+                new SortCondition("Area"),
+                new SortCondition("Controller"),
+                new SortCondition("IsController", ListSortDirection.Descending));
+
             Expression<Func<Function, bool>> predicate = FilterHelper.GetExpression<Function>(request.FilterGroup);
-            PageResult<FunctionOutputDto> page = _securityManager.Functions.ToPage<Function, FunctionOutputDto>(predicate, request.PageCondition);
+            PageResult<FunctionOutputDto> page = _securityManager.Functions.ToPageCache<Function, FunctionOutputDto>(predicate, request.PageCondition, function);
             return page.ToPageData();
         }
 

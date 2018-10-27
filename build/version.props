@@ -2,9 +2,9 @@
 	<PropertyGroup>
 		<VersionPrefix>0.3.0</VersionPrefix>
     <VersionSuffix>beta</VersionSuffix>
-    <VersionSuffixVersion>01</VersionSuffixVersion>
+    <VersionSuffixVersion>11</VersionSuffixVersion>
 		<Version>$(VersionPrefix)-$(VersionSuffix)$(VersionSuffixVersion)</Version>
 		<AssemblyVersion>$(VersionPrefix).0</AssemblyVersion>
-		<FileVersion>$(VersionPrefix).0</FileVersion>
+		<FileVersion>$(VersionPrefix).$(VersionSuffixVersion)</FileVersion>
 	</PropertyGroup>
 </Project>

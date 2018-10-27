@@ -8,7 +8,6 @@
 // -----------------------------------------------------------------------
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using System.Security.Principal;
@@ -33,8 +32,7 @@ namespace OSharp.Secutiry.Claims
             {
                 return null;
             }
-            Claim claim = claimsIdentity.Claims.FirstOrDefault(m => m.Type == type);
-            return claim?.Value;
+            return claimsIdentity.FindFirst(type)?.Value;
         }
 
         /// <summary>
@@ -66,6 +64,19 @@ namespace OSharp.Secutiry.Claims
                 return default(T);
             }
             return (T)Convert.ChangeType(value, typeof(T));
+        }
+
+        /// <summary>
+        /// 获取用户ID
+        /// </summary>
+        public static string GetUserId(this IIdentity identity)
+        {
+            Check.NotNull(identity, nameof(identity));
+            if (!(identity is ClaimsIdentity claimsIdentity))
+            {
+                return null;
+            }
+            return claimsIdentity.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         }
 
         /// <summary>
@@ -104,7 +115,25 @@ namespace OSharp.Secutiry.Claims
             {
                 return null;
             }
-            return claimsIdentity.FindFirst(ClaimTypes.Email)?.Value;
+            return claimsIdentity.FindFirst(ClaimTypes.GivenName)?.Value;
+        }
+
+        /// <summary>
+        /// 移除指定类型的声明
+        /// </summary>
+        public static void RemoveClaim(this IIdentity identity, string claimType)
+        {
+            Check.NotNull(identity, nameof(identity));
+            if (!(identity is ClaimsIdentity claimsIdentity))
+            {
+                return;
+            }
+            Claim claim = claimsIdentity.FindFirst(claimType);
+            if (claim == null)
+            {
+                return;
+            }
+            claimsIdentity.RemoveClaim(claim);
         }
 
         /// <summary>
@@ -115,7 +144,7 @@ namespace OSharp.Secutiry.Claims
             Check.NotNull(identity, nameof(identity));
             if (!(identity is ClaimsIdentity claimsIdentity))
             {
-                return null;
+                return new string[0];
             }
             return claimsIdentity.FindAll(ClaimTypes.Role).SelectMany(m =>
             {

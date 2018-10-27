@@ -13,6 +13,7 @@ using System.Security.Claims;
 using System.Security.Principal;
 using System.Threading.Tasks;
 
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -23,7 +24,9 @@ using OSharp.Exceptions;
 namespace OSharp.Dependency
 {
     /// <summary>
-    /// 应用程序服务定位器，仅适合于<see cref="ServiceLifetime.Singleton"/>与<see cref="ServiceLifetime.Transient"/>生命周期类型的服务
+    /// 应用程序服务定位器，可随时正常解析<see cref="ServiceLifetime.Singleton"/>与<see cref="ServiceLifetime.Transient"/>生命周期类型的服务
+    /// 如果当前处于HttpContext有效的范围内，可正常解析<see cref="ServiceLifetime.Scoped"/>的服务
+    /// 注：服务定位器尚不能正常解析 RootServiceProvider.CreateScope() 生命周期内的 Scoped 的服务
     /// </summary>
     public sealed class ServiceLocator : IDisposable
     {
@@ -91,7 +94,8 @@ namespace OSharp.Dependency
 
         /// <summary>
         /// 执行<see cref="ServiceLifetime.Scoped"/>生命周期的业务逻辑
-        /// 1.当前处理<see cref="ServiceLifetime.Scoped"/>生命周期外，使用CreateScope创建<see cref="ServiceLifetime.Scoped"/>生命周期的ServiceProvider来执行，并释放资源
+        /// 1.当前处理<see cref="ServiceLifetime.Scoped"/>生命周期外，使用CreateScope创建<see cref="ServiceLifetime.Scoped"/>
+        /// 生命周期的ServiceProvider来执行，并释放资源
         /// 2.当前处于<see cref="ServiceLifetime.Scoped"/>生命周期内，直接使用<see cref="ServiceLifetime.Scoped"/>的ServiceProvider来执行
         /// </summary>
         public void ExcuteScopedWork(Action<IServiceProvider> action)
@@ -119,7 +123,8 @@ namespace OSharp.Dependency
 
         /// <summary>
         /// 异步执行<see cref="ServiceLifetime.Scoped"/>生命周期的业务逻辑
-        /// 1.当前处理<see cref="ServiceLifetime.Scoped"/>生命周期外，使用CreateScope创建<see cref="ServiceLifetime.Scoped"/>生命周期的ServiceProvider来执行，并释放资源
+        /// 1.当前处理<see cref="ServiceLifetime.Scoped"/>生命周期外，使用CreateScope创建<see cref="ServiceLifetime.Scoped"/>
+        /// 生命周期的ServiceProvider来执行，并释放资源
         /// 2.当前处于<see cref="ServiceLifetime.Scoped"/>生命周期内，直接使用<see cref="ServiceLifetime.Scoped"/>的ServiceProvider来执行
         /// </summary>
         public async Task ExcuteScopedWorkAsync(Func<IServiceProvider, Task> action)
@@ -147,7 +152,8 @@ namespace OSharp.Dependency
 
         /// <summary>
         /// 执行<see cref="ServiceLifetime.Scoped"/>生命周期的业务逻辑，并获取返回值
-        /// 1.当前处理<see cref="ServiceLifetime.Scoped"/>生命周期外，使用CreateScope创建<see cref="ServiceLifetime.Scoped"/>生命周期的ServiceProvider来执行，并释放资源
+        /// 1.当前处理<see cref="ServiceLifetime.Scoped"/>生命周期外，使用CreateScope创建<see cref="ServiceLifetime.Scoped"/>
+        /// 生命周期的ServiceProvider来执行，并释放资源
         /// 2.当前处于<see cref="ServiceLifetime.Scoped"/>生命周期内，直接使用<see cref="ServiceLifetime.Scoped"/>的ServiceProvider来执行
         /// </summary>
         public TResult ExcuteScopedWork<TResult>(Func<IServiceProvider, TResult> func)
@@ -175,7 +181,8 @@ namespace OSharp.Dependency
 
         /// <summary>
         /// 执行<see cref="ServiceLifetime.Scoped"/>生命周期的业务逻辑，并获取返回值
-        /// 1.当前处理<see cref="ServiceLifetime.Scoped"/>生命周期外，使用CreateScope创建<see cref="ServiceLifetime.Scoped"/>生命周期的ServiceProvider来执行，并释放资源
+        /// 1.当前处理<see cref="ServiceLifetime.Scoped"/>生命周期外，使用CreateScope创建<see cref="ServiceLifetime.Scoped"/>
+        /// 生命周期的ServiceProvider来执行，并释放资源
         /// 2.当前处于<see cref="ServiceLifetime.Scoped"/>生命周期内，直接使用<see cref="ServiceLifetime.Scoped"/>的ServiceProvider来执行
         /// </summary>
         public async Task<TResult> ExcuteScopedWorkAsync<TResult>(Func<IServiceProvider, Task<TResult>> func)
@@ -321,6 +328,15 @@ namespace OSharp.Dependency
             {
                 return null;
             }
+        }
+
+        /// <summary>
+        /// 获取指定节点的选项值
+        /// </summary>
+        public string GetConfiguration(string path)
+        {
+            IConfiguration config = GetService<IConfiguration>() ?? Singleton<IConfiguration>.Instance;
+            return config?[path];
         }
 
         /// <summary>Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.</summary>

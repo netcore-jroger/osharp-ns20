@@ -8,18 +8,16 @@
 // -----------------------------------------------------------------------
 
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 
-using Microsoft.Extensions.Primitives;
-
-using OSharp.Collections;
 using OSharp.Data;
 using OSharp.Entity;
+using OSharp.Entity.Infrastructure;
 using OSharp.Extensions;
 using OSharp.Json;
 using OSharp.Reflection;
@@ -45,9 +43,9 @@ namespace OSharp.Core.EntityInfos
         public string TypeName { get; set; }
 
         /// <summary>
-        /// 获取或设置 是否启用数据日志
+        /// 获取或设置 是否启用数据审计
         /// </summary>
-        [DisplayName("是否启用数据日志")]
+        [DisplayName("是否数据审计")]
         public bool AuditEnabled { get; set; } = true;
 
         /// <summary>
@@ -80,7 +78,7 @@ namespace OSharp.Core.EntityInfos
         {
             Check.NotNull(entityType, nameof(entityType));
 
-            TypeName = entityType.FullName;
+            TypeName = entityType.GetFullNameWithModule();
             Name = entityType.GetDescription();
             AuditEnabled = true;
 
@@ -106,6 +104,10 @@ namespace OSharp.Core.EntityInfos
                         string value = intValues[i].ToString();
                         ep.ValueRange.Add(new { id = value, text = names[i] });
                     }
+                }
+                if (property.HasAttribute<UserFlagAttribute>())
+                {
+                    ep.IsUserFlag = true;
                 }
                 return ep;
             }).ToArray().ToJsonString();

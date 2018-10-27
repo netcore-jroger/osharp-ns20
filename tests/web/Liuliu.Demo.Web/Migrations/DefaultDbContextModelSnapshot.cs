@@ -98,7 +98,7 @@ namespace Liuliu.Demo.Web.Migrations
                     b.ToTable("Role");
 
                     b.HasData(
-                        new { Id = 1, ConcurrencyStamp = "b2194acf-2bfd-46e4-b2ea-1be822ac3052", CreatedTime = new DateTime(2018, 7, 4, 5, 4, 13, 700, DateTimeKind.Local), IsAdmin = true, IsDefault = false, IsLocked = false, IsSystem = true, Name = "系统管理员", NormalizedName = "系统管理员", Remark = "系统最高权限管理角色" }
+                        new { Id = 1, ConcurrencyStamp = "1b18fbe8-a1b9-4b9b-afc9-090eff89dcd6", CreatedTime = new DateTime(2018, 8, 12, 16, 6, 36, 998, DateTimeKind.Local), IsAdmin = true, IsDefault = false, IsLocked = false, IsSystem = true, Name = "系统管理员", NormalizedName = "系统管理员", Remark = "系统最高权限管理角色" }
                     );
                 });
 
@@ -307,13 +307,15 @@ namespace Liuliu.Demo.Web.Migrations
 
                     b.Property<bool>("IsLocked");
 
+                    b.Property<int>("Operation");
+
                     b.Property<int>("RoleId");
 
                     b.HasKey("Id");
 
                     b.HasIndex("RoleId");
 
-                    b.HasIndex("EntityId", "RoleId")
+                    b.HasIndex("EntityId", "RoleId", "Operation")
                         .IsUnique()
                         .HasName("EntityRoleIndex");
 
@@ -372,12 +374,7 @@ namespace Liuliu.Demo.Web.Migrations
                     b.ToTable("Module");
 
                     b.HasData(
-                        new { Id = 1, Code = "Root", Name = "根节点", OrderCode = 1.0, Remark = "系统根节点", TreePathString = "$1$" },
-                        new { Id = 2, Code = "Site", Name = "网站", OrderCode = 1.0, ParentId = 1, Remark = "网站前台", TreePathString = "$1$,$2$" },
-                        new { Id = 3, Code = "Admin", Name = "管理", OrderCode = 2.0, ParentId = 1, Remark = "管理后台", TreePathString = "$1$,$3$" },
-                        new { Id = 4, Code = "Identity", Name = "身份认证模块", OrderCode = 1.0, ParentId = 3, Remark = "身份认证模块节点", TreePathString = "$1$,$3$,$4$" },
-                        new { Id = 5, Code = "Security", Name = "权限安全模块", OrderCode = 2.0, ParentId = 3, Remark = "权限安全模块节点", TreePathString = "$1$,$3$,$5$" },
-                        new { Id = 6, Code = "System", Name = "系统管理模块", OrderCode = 3.0, ParentId = 3, Remark = "系统管理模块节点", TreePathString = "$1$,$3$,$6$" }
+                        new { Id = 1, Code = "Root", Name = "根节点", OrderCode = 1.0, Remark = "系统根节点", TreePathString = "$1$" }
                     );
                 });
 
@@ -441,6 +438,92 @@ namespace Liuliu.Demo.Web.Migrations
                         .HasName("ModuleUserIndex");
 
                     b.ToTable("ModuleUser");
+                });
+
+            modelBuilder.Entity("Liuliu.Demo.Systems.Entities.AuditEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd();
+
+                    b.Property<string>("EntityKey")
+                        .IsRequired();
+
+                    b.Property<string>("Name")
+                        .IsRequired();
+
+                    b.Property<int>("OperateType");
+
+                    b.Property<Guid>("OperationId");
+
+                    b.Property<string>("TypeName")
+                        .IsRequired();
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OperationId");
+
+                    b.ToTable("AuditEntity");
+                });
+
+            modelBuilder.Entity("Liuliu.Demo.Systems.Entities.AuditOperation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd();
+
+                    b.Property<string>("Browser");
+
+                    b.Property<DateTime>("CreatedTime");
+
+                    b.Property<int>("Elapsed");
+
+                    b.Property<string>("FunctionName")
+                        .IsRequired();
+
+                    b.Property<string>("Ip");
+
+                    b.Property<string>("Message");
+
+                    b.Property<string>("NickName");
+
+                    b.Property<string>("OperationSystem");
+
+                    b.Property<int>("ResultType");
+
+                    b.Property<string>("UserAgent");
+
+                    b.Property<string>("UserId");
+
+                    b.Property<string>("UserName");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AuditOperation");
+                });
+
+            modelBuilder.Entity("Liuliu.Demo.Systems.Entities.AuditProperty", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd();
+
+                    b.Property<Guid>("AuditEntityId");
+
+                    b.Property<string>("DataType");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired();
+
+                    b.Property<string>("FieldName")
+                        .IsRequired();
+
+                    b.Property<string>("NewValue");
+
+                    b.Property<string>("OriginalValue");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuditEntityId");
+
+                    b.ToTable("AuditProperty");
                 });
 
             modelBuilder.Entity("OSharp.Core.EntityInfos.EntityInfo", b =>
@@ -509,7 +592,7 @@ namespace Liuliu.Demo.Web.Migrations
                     b.ToTable("Function");
                 });
 
-            modelBuilder.Entity("OSharp.System.KeyValueCouple", b =>
+            modelBuilder.Entity("OSharp.Core.Systems.KeyValue", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd();
@@ -525,11 +608,11 @@ namespace Liuliu.Demo.Web.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("KeyValueCouple");
+                    b.ToTable("KeyValue");
 
                     b.HasData(
-                        new { Id = new Guid("4b2f3f7f-874e-4f85-82a1-a91300538f00"), IsLocked = false, Key = "Site.Name", ValueJson = "\"OSHARP\"", ValueType = "System.String" },
-                        new { Id = new Guid("1a972119-cf36-4314-8ddd-a91300538f04"), IsLocked = false, Key = "Site.Description", ValueJson = "\"Osharp with .NetStandard2.0 & Angular6\"", ValueType = "System.String" }
+                        new { Id = new Guid("a239920c-574f-4928-b7a8-a93a01097d29"), IsLocked = false, Key = "Site.Name", ValueJson = "\"OSHARP\"", ValueType = "System.String" },
+                        new { Id = new Guid("eba477b4-fc46-484a-8d04-a93a01097d30"), IsLocked = false, Key = "Site.Description", ValueJson = "\"Osharp with .NetStandard2.0 & Angular6\"", ValueType = "System.String" }
                     );
                 });
 
@@ -670,6 +753,22 @@ namespace Liuliu.Demo.Web.Migrations
                     b.HasOne("Liuliu.Demo.Identity.Entities.User")
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("Liuliu.Demo.Systems.Entities.AuditEntity", b =>
+                {
+                    b.HasOne("Liuliu.Demo.Systems.Entities.AuditOperation", "Operation")
+                        .WithMany("AuditEntities")
+                        .HasForeignKey("OperationId")
+                        .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("Liuliu.Demo.Systems.Entities.AuditProperty", b =>
+                {
+                    b.HasOne("Liuliu.Demo.Systems.Entities.AuditEntity", "AuditEntity")
+                        .WithMany("Properties")
+                        .HasForeignKey("AuditEntityId")
                         .OnDelete(DeleteBehavior.Cascade);
                 });
 #pragma warning restore 612, 618

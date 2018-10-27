@@ -8,8 +8,10 @@
 // -----------------------------------------------------------------------
 
 using System;
+using System.ComponentModel;
 using System.Linq;
 
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
 using OSharp.Core.Functions;
@@ -22,7 +24,8 @@ namespace OSharp.AspNetCore.Mvc
     /// <summary>
     /// MVC功能点模块
     /// </summary>
-    public class MvcFunctionPack : OsharpPack
+    [Description("MVC功能点模块")]
+    public class MvcFunctionPack : AspOsharpPack
     {
         /// <summary>
         /// 获取 模块级别
@@ -43,12 +46,12 @@ namespace OSharp.AspNetCore.Mvc
         }
 
         /// <summary>
-        /// 使用模块服务
+        /// 应用模块服务
         /// </summary>
-        /// <param name="provider"></param>
-        public override void UsePack(IServiceProvider provider)
+        /// <param name="app">应用程序构建器</param>
+        public override void UsePack(IApplicationBuilder app)
         {
-            IFunctionHandler functionHandler = provider.GetServices<IFunctionHandler>().FirstOrDefault(m => m.GetType() == typeof(MvcFunctionHandler));
+            IFunctionHandler functionHandler = app.ApplicationServices.GetServices<IFunctionHandler>().FirstOrDefault(m => m.GetType() == typeof(MvcFunctionHandler));
             if (functionHandler == null)
             {
                 return;

@@ -8,6 +8,7 @@
 // -----------------------------------------------------------------------
 
 using System;
+using System.ComponentModel;
 using System.Linq;
 
 using AutoMapper;
@@ -26,6 +27,7 @@ namespace OSharp.AutoMapper
     /// <summary>
     /// AutoMapper模块
     /// </summary>
+    [Description("AutoMapper模块")]
     public class AutoMapperPack : OsharpPack
     {
         /// <summary>
@@ -44,16 +46,16 @@ namespace OSharp.AutoMapper
 
             services.AddSingleton<IMapFromAttributeTypeFinder, MapFromAttributeTypeFinder>();
             services.AddSingleton<IMapToAttributeTypeFinder, MapToAttributeTypeFinder>();
-            services.AddSingleton<IMapTuple, MapAttributeProfile>();
+            services.AddSingleton<IMapTuple, MapTupleProfile>();
             services.AddSingleton<IMapper, AutoMapperMapper>();
 
             return services;
         }
-
+        
         /// <summary>
-        /// 使用模块服务
+        /// 应用模块服务
         /// </summary>
-        /// <param name="provider"></param>
+        /// <param name="provider">服务提供者</param>
         public override void UsePack(IServiceProvider provider)
         {
             MapperConfigurationExpression cfg = provider.GetService<MapperConfigurationExpression>() ?? new MapperConfigurationExpression();

@@ -45,9 +45,9 @@ namespace OSharp.Core.Options
             MailSenderOptions sender = section.Get<MailSenderOptions>();
             if (sender != null)
             {
-                if (sender.SenderPassword == null)
+                if (sender.Password == null)
                 {
-                    sender.SenderPassword = _configuration["MailSenderPassword"];
+                    sender.Password = _configuration["OSharp:MailSender:Password"];
                 }
                 options.MailSender = sender;
             }
@@ -59,7 +59,7 @@ namespace OSharp.Core.Options
             {
                 if (jwt.Secret == null)
                 {
-                    jwt.Secret = _configuration["JwtSecret"];
+                    jwt.Secret = _configuration["OSharp:Jwt:Secret"];
                 }
                 options.Jwt = jwt;
             }
@@ -72,7 +72,7 @@ namespace OSharp.Core.Options
         /// </summary>
         /// <param name="options"></param>
         private void SetDbContextOptionses(OSharpOptions options)
-        {
+        { 
             IConfigurationSection section = _configuration.GetSection("OSharp:DbContexts");
             IDictionary<string, OSharpDbContextOptions> dict = section.Get<Dictionary<string, OSharpDbContextOptions>>();
             if (dict == null || dict.Count == 0)
