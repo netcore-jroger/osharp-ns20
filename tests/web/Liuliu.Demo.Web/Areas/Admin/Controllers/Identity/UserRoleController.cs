@@ -9,6 +9,7 @@
 
 using System;
 using System.ComponentModel;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
 
@@ -24,6 +25,7 @@ using OSharp.Core.Modules;
 using OSharp.Data;
 using OSharp.Entity;
 using OSharp.Filter;
+using OSharp.Secutiry;
 
 
 namespace Liuliu.Demo.Web.Areas.Admin.Controllers
@@ -33,10 +35,13 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
     public class UserRoleController : AdminApiController
     {
         private readonly IIdentityContract _identityContract;
+        private readonly IFilterService _filterService;
 
-        public UserRoleController(IIdentityContract identityContract)
+        public UserRoleController(IIdentityContract identityContract,
+            IFilterService filterService)
         {
             _identityContract = identityContract;
+            _filterService = filterService;
         }
 
         /// <summary>
@@ -48,8 +53,22 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
         [Description("读取")]
         public PageData<UserRoleOutputDto> Read(PageRequest request)
         {
-            Expression<Func<UserRole, bool>> predicate = FilterHelper.GetExpression<UserRole>(request.FilterGroup);
-            PageResult<UserRoleOutputDto> page = _identityContract.UserRoles.ToPage<UserRole, UserRoleOutputDto>(predicate, request.PageCondition);
+            Expression<Func<UserRole, bool>> predicate = _filterService.GetExpression<UserRole>(request.FilterGroup);
+            Func<UserRole, bool> updateFunc = _filterService.GetDataFilterExpression<UserRole>(null, DataAuthOperation.Update).Compile();
+            Func<UserRole, bool> deleteFunc = _filterService.GetDataFilterExpression<UserRole>(null, DataAuthOperation.Delete).Compile();
+
+            PageResult<UserRoleOutputDto> page = _identityContract.UserRoles.ToPage(predicate, request.PageCondition, m => new
+            {
+                D = m,
+                UserName = m.User.UserName,
+                RoleName = m.Role.Name,
+            }).ToPageResult(data => data.Select(m => new UserRoleOutputDto(m.D)
+            {
+                UserName = m.UserName,
+                RoleName = m.RoleName,
+                Updatable = updateFunc(m.D),
+                Deletable = deleteFunc(m.D)
+            }).ToArray());
             return page.ToPageData();
         }
 
@@ -68,5 +87,22 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
             OperationResult result = await _identityContract.UpdateUserRoles(dtos);
             return result.ToAjaxResult();
         }
+
+        /// <summary>
+        /// 删除用户角色信息
+        /// </summary>
+        /// <param name="ids">要删除的用户角色编号</param>
+        /// <returns>JSON操作结果</returns>
+        [HttpPost]
+        [ModuleInfo]
+        [DependOnFunction("Read")]
+        [ServiceFilter(typeof(UnitOfWorkAttribute))]
+        [Description("删除")]
+        public async Task<AjaxResult> Delete(Guid[] ids)
+        {
+            OperationResult result = await _identityContract.DeleteUserRoles(ids);
+            return result.ToAjaxResult();
+        }
+
     }
 }

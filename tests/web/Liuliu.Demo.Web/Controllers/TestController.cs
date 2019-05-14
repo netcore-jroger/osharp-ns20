@@ -20,6 +20,7 @@ using Liuliu.Demo.Identity.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using OSharp.AspNetCore;
@@ -29,7 +30,7 @@ using OSharp.Collections;
 using OSharp.Data;
 using OSharp.Dependency;
 using OSharp.Entity;
-using OSharp.Entity.Transactions;
+using OSharp.Exceptions;
 using OSharp.Identity;
 using OSharp.Json;
 
@@ -62,15 +63,15 @@ namespace Liuliu.Demo.Web.Controllers
                 RegisterDto dto = new RegisterDto
                 {
                     UserName = "admin",
-                    Password = "gmf31529019",
-                    ConfirmPassword = "gmf31529019",
+                    Password = "osharp123456",
+                    ConfirmPassword = "osharp123456",
                     Email = "i66soft@qq.com",
                     NickName = "大站长",
                     RegisterIp = HttpContext.GetClientIp()
                 };
 
                 OperationResult<User> result = await _identityContract.Register(dto);
-                if (result.Successed)
+                if (result.Succeeded)
                 {
                     User user = result.Data;
                     user.EmailConfirmed = true;
@@ -80,14 +81,14 @@ namespace Liuliu.Demo.Web.Controllers
 
                 dto = new RegisterDto()
                 {
-                    UserName ="mf.guo",
-                    Password = "gmf31529019",
+                    UserName ="osharp",
+                    Password = "osharp123456",
                     Email = "mf.guo@qq.com",
-                    NickName = "柳柳英侠",
+                    NickName = "测试号",
                     RegisterIp = HttpContext.GetClientIp()
                 };
                 result = await _identityContract.Register(dto);
-                if (result.Successed)
+                if (result.Succeeded)
                 {
                     User user = result.Data;
                     user.EmailConfirmed = true;
@@ -104,16 +105,12 @@ namespace Liuliu.Demo.Web.Controllers
 
     public class ClassFilter : ActionFilterAttribute, IExceptionFilter
     {
-        private readonly ILogger _logger;
-
-        public ClassFilter()
-        {
-            _logger = ServiceLocator.Instance.GetLogger(GetType());
-        }
+        private ILogger _logger;
 
         /// <inheritdoc />
         public override void OnActionExecuting(ActionExecutingContext context)
         {
+            _logger = context.HttpContext.RequestServices.GetLogger<ClassFilter>();
             _logger.LogInformation("ClassFilter - OnActionExecuting");
         }
 
@@ -148,16 +145,12 @@ namespace Liuliu.Demo.Web.Controllers
 
     public class MethodFilter : ActionFilterAttribute
     {
-        private readonly ILogger _logger;
-
-        public MethodFilter()
-        {
-            _logger = ServiceLocator.Instance.GetLogger(GetType());
-        }
+        private ILogger _logger;
 
         /// <inheritdoc />
         public override void OnActionExecuting(ActionExecutingContext context)
         {
+            _logger = context.HttpContext.RequestServices.GetLogger<MethodFilter>();
             _logger.LogInformation("MethodFilter - OnActionExecuting");
         }
 

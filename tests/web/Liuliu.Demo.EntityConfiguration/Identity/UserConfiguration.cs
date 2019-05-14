@@ -25,17 +25,10 @@ namespace Liuliu.Demo.EntityConfiguration.Identity
         /// <param name="builder">实体类型创建器</param>
         public override void Configure(EntityTypeBuilder<User> builder)
         {
-            builder.HasIndex(m => m.NormalizedUserName).HasName("UserNameIndex").IsUnique();
-            builder.HasIndex(m => m.NormalizeEmail).HasName("EmailIndex");
+            builder.HasIndex(m => new { m.NormalizedUserName, m.DeletedTime }).HasName("UserNameIndex").IsUnique();
+            builder.HasIndex(m => new { m.NormalizeEmail, m.DeletedTime }).HasName("EmailIndex");
 
             builder.Property(m => m.ConcurrencyStamp).IsConcurrencyToken();
-
-            builder.HasOne<UserDetail>().WithOne().HasForeignKey<UserDetail>(ud => ud.UserId).IsRequired();
-            builder.HasMany<UserClaim>().WithOne().HasForeignKey(uc => uc.UserId).IsRequired();
-            builder.HasMany<UserLogin>().WithOne().HasForeignKey(ul => ul.UserId).IsRequired();
-            builder.HasMany<UserToken>().WithOne().HasForeignKey(ut => ut.UserId).IsRequired();
-
-            builder.HasMany<UserRole>().WithOne().HasForeignKey(ur => ur.UserId).IsRequired();
         }
     }
 }

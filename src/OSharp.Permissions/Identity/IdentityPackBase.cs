@@ -8,9 +8,12 @@
 // -----------------------------------------------------------------------
 
 using System;
+using System.Reflection;
+using System.Security.Claims;
 using System.Security.Principal;
 
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,6 +21,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using OSharp.AspNetCore;
 using OSharp.Core.Packs;
+using OSharp.EventBuses;
 
 
 namespace OSharp.Identity
@@ -25,6 +29,7 @@ namespace OSharp.Identity
     /// <summary>
     /// 身份论证模块基类
     /// </summary>
+    [DependsOnPacks(typeof(EventBusPack), typeof(AspNetCorePack))]
     public abstract class IdentityPackBase<TUserStore, TRoleStore, TUser, TRole, TUserKey, TRoleKey> : AspOsharpPack
         where TUserStore : class, IUserStore<TUser>
         where TRoleStore : class, IRoleStore<TRole>
@@ -48,16 +53,28 @@ namespace OSharp.Identity
             services.AddScoped<IUserStore<TUser>, TUserStore>();
             services.AddScoped<IRoleStore<TRole>, TRoleStore>();
 
-            //注入当前用户，替换Thread.CurrentPrincipal的作用
-            services.AddTransient<IPrincipal>(provider =>
-            {
-                IHttpContextAccessor accessor = provider.GetService<IHttpContextAccessor>();
-                return accessor?.HttpContext?.User;
-            });
-
             //在线用户缓存
-            services.AddSingleton<IOnlineUserCache, OnlineUserCache<TUser, TUserKey, TRole, TRoleKey>>();
-            services.AddSingleton<IOnlineUserProvider, OnlineUserProvider<TUser, TUserKey, TRole, TRoleKey>>();
+            services.TryAddSingleton<IOnlineUserCache, OnlineUserCache<TUser, TUserKey, TRole, TRoleKey>>();
+            services.TryAddSingleton<IOnlineUserProvider, OnlineUserProvider<TUser, TUserKey, TRole, TRoleKey>>();
+
+            // 替换 IPrincipal ，设置用户主键类型，用以在Repository进行审计时注入正确用户主键类型
+            services.Replace(new ServiceDescriptor(typeof(IPrincipal),
+                provider =>
+                {
+                    IHttpContextAccessor accessor = provider.GetService<IHttpContextAccessor>();
+                    ClaimsPrincipal principal = accessor?.HttpContext?.User;
+                    if (principal != null && principal.Identity is ClaimsIdentity identity)
+                    {
+                        PropertyInfo property = typeof(TUser).GetProperty("Id");
+                        if (property != null)
+                        {
+                            identity.AddClaim(new Claim("userIdTypeName", property.PropertyType.FullName));
+                        }
+                    }
+
+                    return principal;
+                },
+                ServiceLifetime.Transient));
 
             Action<IdentityOptions> identityOptionsAction = IdentityOptionsAction();
             IdentityBuilder builder = services.AddIdentity<TUser, TRole>(identityOptionsAction);

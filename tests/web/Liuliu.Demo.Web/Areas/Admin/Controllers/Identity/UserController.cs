@@ -7,23 +7,15 @@
 //  <last-date>2018-06-27 4:49</last-date>
 // -----------------------------------------------------------------------
 
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq.Expressions;
-using System.Threading.Tasks;
-
 using Liuliu.Demo.Common.Dtos;
 using Liuliu.Demo.Identity;
 using Liuliu.Demo.Identity.Dtos;
 using Liuliu.Demo.Identity.Entities;
 using Liuliu.Demo.Security;
 using Liuliu.Demo.Security.Dtos;
-
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-
 using OSharp.AspNetCore.Mvc;
 using OSharp.AspNetCore.Mvc.Filters;
 using OSharp.AspNetCore.UI;
@@ -32,11 +24,17 @@ using OSharp.Collections;
 using OSharp.Core.Functions;
 using OSharp.Core.Modules;
 using OSharp.Data;
-using OSharp.Entity;
 using OSharp.Extensions;
 using OSharp.Filter;
 using OSharp.Identity;
 using OSharp.Mapping;
+using OSharp.Secutiry;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Threading.Tasks;
 
 
 namespace Liuliu.Demo.Web.Areas.Admin.Controllers
@@ -46,6 +44,8 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
     public class UserController : AdminApiController
     {
         private readonly IIdentityContract _identityContract;
+        private readonly ICacheService _cacheService;
+        private readonly IFilterService _filterService;
         private readonly SecurityManager _securityManager;
         private readonly UserManager<User> _userManager;
 
@@ -53,12 +53,15 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
             UserManager<User> userManager,
             SecurityManager securityManager,
             IIdentityContract identityContract,
-            ILoggerFactory loggerFactory
-        )
+            ILoggerFactory loggerFactory,
+            ICacheService cacheService,
+            IFilterService filterService)
         {
             _userManager = userManager;
             _securityManager = securityManager;
             _identityContract = identityContract;
+            _cacheService = cacheService;
+            _filterService = filterService;
         }
 
         /// <summary>
@@ -72,8 +75,20 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
         {
             Check.NotNull(request, nameof(request));
             IFunction function = this.GetExecuteFunction();
-            Expression<Func<User, bool>> predicate = request.FilterGroup.ToExpression<User>();
-            var page = _userManager.Users.ToPageCache<User, UserOutputDto>(predicate, request.PageCondition, function);
+
+            Func<User, bool> updateFunc = _filterService.GetDataFilterExpression<User>(null, DataAuthOperation.Update).Compile();
+            Func<User, bool> deleteFunc = _filterService.GetDataFilterExpression<User>(null, DataAuthOperation.Delete).Compile();
+            Expression<Func<User, bool>> predicate = _filterService.GetExpression<User>(request.FilterGroup);
+            var page = _cacheService.ToPageCache(_userManager.Users, predicate, request.PageCondition, m => new
+            {
+                D = m,
+                Roles = m.UserRoles.Select(n => n.Role.Name)
+            }, function).ToPageResult(data => data.Select(m => new UserOutputDto(m.D)
+            {
+                Roles = m.Roles.ToArray(),
+                Updatable = updateFunc(m.D),
+                Deletable = deleteFunc(m.D)
+            }).ToArray());
             return page.ToPageData();
         }
 
@@ -88,8 +103,8 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
         {
             Check.NotNull(group, nameof(group));
             IFunction function = this.GetExecuteFunction();
-            Expression<Func<User, bool>> exp = group.ToExpression<User>();
-            ListNode[] nodes = _userManager.Users.ToCacheArray<User, ListNode>(exp, m => new ListNode()
+            Expression<Func<User, bool>> exp = _filterService.GetExpression<User>(group);
+            ListNode[] nodes = _cacheService.ToCacheArray<User, ListNode>(_userManager.Users, exp, m => new ListNode()
             {
                 Id = m.Id,
                 Name = m.NickName

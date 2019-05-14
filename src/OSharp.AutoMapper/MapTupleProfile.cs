@@ -12,9 +12,11 @@ using System.Collections.Generic;
 
 using AutoMapper;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using OSharp.Collections;
+using OSharp.Dependency;
 using OSharp.Mapping;
 using OSharp.Reflection;
 
@@ -24,6 +26,7 @@ namespace OSharp.AutoMapper
     /// <summary>
     /// 创建源类型与目标类型的配对
     /// </summary>
+    [Dependency(ServiceLifetime.Singleton, TryAdd = true)]
     public class MapTupleProfile : Profile, IMapTuple
     {
         private readonly IMapFromAttributeTypeFinder _mapFromAttributeTypeFinder;
@@ -53,7 +56,7 @@ namespace OSharp.AutoMapper
             Type[] types = _mapFromAttributeTypeFinder.FindAll(true);
             foreach (Type targetType in types)
             {
-                MapFromAttribute attribute = targetType.GetAttribute<MapFromAttribute>();
+                MapFromAttribute attribute = targetType.GetAttribute<MapFromAttribute>(true);
                 foreach (Type sourceType in attribute.SourceTypes)
                 {
                     var tuple = ValueTuple.Create(sourceType, targetType);
@@ -64,7 +67,7 @@ namespace OSharp.AutoMapper
             types = _mapToAttributeTypeFinder.FindAll(true);
             foreach (Type sourceType in types)
             {
-                MapToAttribute attribute = sourceType.GetAttribute<MapToAttribute>();
+                MapToAttribute attribute = sourceType.GetAttribute<MapToAttribute>(true);
                 foreach (Type targetType in attribute.TargetTypes)
                 {
                     var tuple = ValueTuple.Create(sourceType, targetType);

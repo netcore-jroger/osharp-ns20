@@ -33,10 +33,12 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
     public class ModuleController : AdminApiController
     {
         private readonly SecurityManager _securityManager;
+        private readonly IFilterService _filterService;
 
-        public ModuleController(SecurityManager securityManager)
+        public ModuleController(SecurityManager securityManager, IFilterService filterService)
         {
             _securityManager = securityManager;
+            _filterService = filterService;
         }
 
         /// <summary>
@@ -112,10 +114,10 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
                     IsChecked = checkedModuleIds.Contains(item.Id),
                     HasChildren = item.ChildIds.Count > 0,
                     item.Remark,
-                    Items = item.ChildIds.Count > 0 ? GetModulesWithChecked(item.ChildIds.ToArray(), checkedModuleIds) : new List<object>()
+                    Children = item.ChildIds.Count > 0 ? GetModulesWithChecked(item.ChildIds.ToArray(), checkedModuleIds) : new List<object>()
                 };
 
-                if (node.Items.Count == 0 && !IsRoleLimit(node.Id))
+                if (node.Children.Count == 0 && !IsRoleLimit(node.Id))
                 {
                     continue;
                 }
@@ -146,7 +148,7 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
             {
                 return new PageData<FunctionOutputDto2>();
             }
-            Expression<Func<Module, bool>> moduleExp = FilterHelper.GetExpression<Module>(request.FilterGroup);
+            Expression<Func<Module, bool>> moduleExp = _filterService.GetExpression<Module>(request.FilterGroup);
             int[] moduleIds = _securityManager.Modules.Where(moduleExp).Select(m => m.Id).ToArray();
             Guid[] functionIds = _securityManager.ModuleFunctions.Where(m => moduleIds.Contains(m.ModuleId))
                 .Select(m => m.FunctionId).Distinct().ToArray();

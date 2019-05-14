@@ -25,6 +25,7 @@ namespace OSharp.Net
     /// <summary>
     /// 默认邮件发送者
     /// </summary>
+    [Dependency(ServiceLifetime.Singleton, TryAdd = true)]
     public class DefaultEmailSender : IEmailSender
     {
         private readonly IServiceProvider _provider;
@@ -46,7 +47,7 @@ namespace OSharp.Net
         /// <returns></returns>
         public Task SendEmailAsync(string email, string subject, string body)
         {
-            OSharpOptions options = _provider.GetOSharpOptions();
+            OsharpOptions options = _provider.GetOSharpOptions();
             MailSenderOptions mailSender = options.MailSender;
             if (mailSender == null || mailSender.Host == null || mailSender.Host.Contains("请替换"))
             {

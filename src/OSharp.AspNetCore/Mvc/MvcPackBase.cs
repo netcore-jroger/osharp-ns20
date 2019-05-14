@@ -16,7 +16,6 @@ using Newtonsoft.Json.Serialization;
 using OSharp.AspNetCore.Mvc.Conventions;
 using OSharp.AspNetCore.Mvc.Filters;
 using OSharp.Core.Packs;
-using OSharp.Net;
 
 
 namespace OSharp.AspNetCore.Mvc
@@ -24,6 +23,7 @@ namespace OSharp.AspNetCore.Mvc
     /// <summary>
     /// Mvc模块基类
     /// </summary>
+    [DependsOnPacks(typeof(AspNetCorePack))]
     public abstract class MvcPackBase : AspOsharpPack
     {
         /// <summary>
@@ -41,14 +41,15 @@ namespace OSharp.AspNetCore.Mvc
             services.AddMvc(options =>
             {
                 options.Conventions.Add(new DashedRoutingConvention());
-                options.Filters.Add(new FunctionAuthorizationFilter()); //全局功能权限过滤器
+                // 全局功能权限过滤器
+                options.Filters.Add(new FunctionAuthorizationFilter());
             }).AddJsonOptions(options =>
             {
                 options.SerializerSettings.ContractResolver = new DefaultContractResolver();
-            }).SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
+            }).SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
 
+            services.AddHttpsRedirection(opts => opts.HttpsPort = 443);
             services.AddDistributedMemoryCache();
-            services.AddSingleton<IEmailSender, DefaultEmailSender>();
 
             return services;
         }

@@ -8,6 +8,8 @@
 // -----------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -60,10 +62,33 @@ namespace OSharp.Core.Packs
         /// 获取当前模块的依赖模块类型
         /// </summary>
         /// <returns></returns>
-        internal Type[] GetDependModuleTypes()
+        internal Type[] GetDependPackTypes(Type packType = null)
         {
-            DependsOnPacksAttribute depends = this.GetType().GetAttribute<DependsOnPacksAttribute>();
-            return depends == null ? new Type[0] : depends.DependedModuleTypes;
+            if (packType == null)
+            {
+                packType = GetType();
+            }
+            DependsOnPacksAttribute[] dependAttrs = packType.GetAttributes<DependsOnPacksAttribute>();
+            if (dependAttrs.Length == 0)
+            {
+                return new Type[0];
+            }
+            List<Type> dependTypes = new List<Type>();
+            foreach (DependsOnPacksAttribute dependAttr in dependAttrs)
+            {
+                Type[] packTypes = dependAttr.DependedPackTypes;
+                if (packTypes.Length == 0)
+                {
+                    continue;
+                }
+                dependTypes.AddRange(packTypes);
+                foreach (Type type in packTypes)
+                {
+                    dependTypes.AddRange(GetDependPackTypes(type));
+                }
+            }
+
+            return dependTypes.Distinct().ToArray();
         }
     }
 }

@@ -78,6 +78,7 @@ namespace OSharp.Identity
         /// <param name="userTokenRepository">用户令牌仓储</param>
         /// <param name="roleRepository">角色仓储</param>
         /// <param name="userRoleRepository">用户角色仓储</param>
+        /// <param name="eventBus">事件总线</param>
         protected UserStoreBase(
             IRepository<TUser, TUserKey> userRepository,
             IRepository<TUserLogin, Guid> userLoginRepository,
@@ -250,11 +251,11 @@ namespace OSharp.Identity
             ThrowIfDisposed();
             Check.NotNull(user, nameof(user));
 
-            if (user.Email.IsMissing())
+            if (string.IsNullOrEmpty(user.Email))
             {
                 user.EmailConfirmed = false;
             }
-            if (user.PhoneNumber.IsMissing())
+            if (string.IsNullOrEmpty(user.PhoneNumber))
             {
                 user.PhoneNumberConfirmed = false;
             }
@@ -399,7 +400,7 @@ namespace OSharp.Identity
             Check.NotNullOrEmpty(loginProvider, nameof(loginProvider));
             Check.NotNullOrEmpty(providerKey, nameof(providerKey));
 
-            TUserKey userId = _userLoginRepository.TrackQuery(m => m.LoginProvider == loginProvider && m.ProviderKey == providerKey)
+            TUserKey userId = _userLoginRepository.Query(m => m.LoginProvider == loginProvider && m.ProviderKey == providerKey)
                 .Select(m => m.UserId).FirstOrDefault();
             if (Equals(userId, default(TUserKey)))
             {

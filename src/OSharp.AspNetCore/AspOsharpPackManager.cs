@@ -7,19 +7,14 @@
 //  <last-date>2018-08-09 22:34</last-date>
 // -----------------------------------------------------------------------
 
-using System;
-using System.ComponentModel;
-using System.Diagnostics;
-
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-
-using OSharp.Core.Builders;
 using OSharp.Core.Packs;
 using OSharp.Exceptions;
-using OSharp.Reflection;
+using System;
+using System.ComponentModel;
 
 
 namespace OSharp.AspNetCore
@@ -29,8 +24,6 @@ namespace OSharp.AspNetCore
     /// </summary>
     public class AspOsharpPackManager : OsharpPackManager, IAspUsePack
     {
-        
-
         /// <summary>
         /// 应用模块服务，仅在非AspNetCore环境下调用，AspNetCore环境请执行<see cref="UsePack(IApplicationBuilder)"/>功能
         /// </summary>
@@ -59,11 +52,13 @@ namespace OSharp.AspNetCore
 
             foreach (OsharpPack pack in LoadedPacks)
             {
-                pack.UsePack(app.ApplicationServices);
-
                 if (pack is AspOsharpPack aspPack)
                 {
                     aspPack.UsePack(app);
+                }
+                else
+                {
+                    pack.UsePack(app.ApplicationServices);
                 }
             }
 

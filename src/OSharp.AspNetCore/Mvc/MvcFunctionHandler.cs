@@ -13,11 +13,11 @@ using System.Reflection;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 
 using OSharp.AspNetCore.Mvc.Filters;
 using OSharp.Core;
 using OSharp.Core.Functions;
-using OSharp.Dependency;
 using OSharp.Exceptions;
 using OSharp.Reflection;
 
@@ -32,11 +32,11 @@ namespace OSharp.AspNetCore.Mvc
         /// <summary>
         /// 初始化一个<see cref="FunctionHandlerBase{TFunction}"/>类型的新实例
         /// </summary>
-        public MvcFunctionHandler()
+        public MvcFunctionHandler(IServiceProvider serviceProvider)
+            : base(serviceProvider)
         {
-            IAllAssemblyFinder allAssemblyFinder = ServiceLocator.Instance.GetService<IAllAssemblyFinder>();
-            FunctionTypeFinder = new MvcControllerTypeFinder(allAssemblyFinder);
-            MethodInfoFinder = new PublicInstanceMethodInfoFinder();
+            FunctionTypeFinder = serviceProvider.GetService<IFunctionTypeFinder>();
+            MethodInfoFinder = new MvcMethodInfoFinder();
         }
 
         /// <summary>
@@ -69,7 +69,7 @@ namespace OSharp.AspNetCore.Mvc
             {
                 Name = controllerType.GetDescription(),
                 Area = GetArea(controllerType),
-                Controller = controllerType.Name.Replace("Controller", string.Empty),
+                Controller = controllerType.Name.Replace("ControllerBase", string.Empty).Replace("Controller", string.Empty),
                 IsController = true,
                 AccessType = accessType
             };
@@ -122,7 +122,7 @@ namespace OSharp.AspNetCore.Mvc
         /// </summary>
         private static string GetArea(Type type)
         {
-            AreaAttribute attribute = type.GetAttribute<AreaAttribute>(true);
+            AreaAttribute attribute = type.GetAttribute<AreaAttribute>();
             return attribute?.RouteValue;
         }
     }

@@ -7,7 +7,6 @@
 //  <last-date>2017-08-15 23:33</last-date>
 // -----------------------------------------------------------------------
 
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -16,7 +15,6 @@ using System.Reflection;
 using Microsoft.Extensions.DependencyModel;
 
 using OSharp.Collections;
-using OSharp.Dependency;
 using OSharp.Finders;
 
 namespace OSharp.Reflection
@@ -49,7 +47,8 @@ namespace OSharp.Reflection
                 "netstandard",
                 "dotnet",
                 "Window",
-                "mscorlib"
+                "mscorlib",
+                "api-ms-win-core"
             };
             DependencyContext context = DependencyContext.Default;
             if (context != null)
@@ -95,16 +94,12 @@ namespace OSharp.Reflection
             }
 
             //遍历文件夹的方式，用于传统.netfx
-            string path = AppDomain.CurrentDomain.BaseDirectory;
+            string path = Directory.GetCurrentDirectory();
             string[] files = Directory.GetFiles(path, "*.dll", SearchOption.TopDirectoryOnly)
                 .Concat(Directory.GetFiles(path, "*.exe", SearchOption.TopDirectoryOnly))
                 .ToArray();
-            if (_filterNetAssembly)
-            {
-                string[] files1 = files;
-                files = files.WhereIf(m => files1.Any(n => m.StartsWith(n, StringComparison.OrdinalIgnoreCase)), _filterNetAssembly).ToArray();
-            }
-            return files.Select(Assembly.LoadFrom).ToArray();
+
+            return files.Where(file => filters.All(token => Path.GetFileName(file)?.StartsWith(token) != true)).Select(Assembly.LoadFrom).ToArray();
         }
 
         private static Assembly[] LoadFiles(IEnumerable<string> files)

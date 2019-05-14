@@ -30,9 +30,8 @@ namespace OSharp.Identity.JwtBearer
         /// <summary>
         /// 生成JwtToken
         /// </summary>
-        public static string CreateToken(Claim[] claims)
+        public static string CreateToken(Claim[] claims, OsharpOptions options)
         {
-            OSharpOptions options = ServiceLocator.Instance.GetService<IOptions<OSharpOptions>>().Value;
             JwtOptions jwtOptions = options.Jwt;
             string secret = jwtOptions.Secret;
             if (secret == null)
@@ -42,7 +41,8 @@ namespace OSharp.Identity.JwtBearer
             SecurityKey key = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(secret));
             SigningCredentials credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256Signature);
             DateTime now = DateTime.Now;
-            DateTime expires = now.AddDays(7);
+            double days = Math.Abs(jwtOptions.ExpireDays) > 0 ? Math.Abs(jwtOptions.ExpireDays) : 7;
+            DateTime expires = now.AddDays(days);
 
             SecurityTokenDescriptor descriptor = new SecurityTokenDescriptor
             {

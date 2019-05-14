@@ -9,13 +9,17 @@
 
 using System;
 
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using OSharp.Collections;
 using OSharp.Core.Builders;
 using OSharp.Core.Options;
 using OSharp.Core.Packs;
 using OSharp.Data;
+using OSharp.Dependency;
 using OSharp.Entity;
 using OSharp.Reflection;
 
@@ -35,18 +39,16 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             Check.NotNull(services, nameof(services));
 
-            //初始化所有程序集查找器，如需更改程序集查找逻辑，请事先赋予自定义查找器的实例
-            if (Singleton<IAllAssemblyFinder>.Instance == null)
-            {
-                Singleton<IAllAssemblyFinder>.Instance = new AppDomainAllAssemblyFinder();
-            }
+            IConfiguration configuration = services.GetConfiguration();
+            Singleton<IConfiguration>.Instance = configuration;
 
-            IOsharpBuilder builder = new OsharpBuilder();
-            if (builderAction != null)
-            {
-                builderAction(builder);
-            }
-            Singleton<IOsharpBuilder>.Instance = builder;
+            //初始化所有程序集查找器
+            services.TryAddSingleton<IAllAssemblyFinder>(new AppDomainAllAssemblyFinder());
+
+            IOsharpBuilder builder = services.GetSingletonInstanceOrNull<IOsharpBuilder>() ?? new OsharpBuilder();
+            builderAction?.Invoke(builder);
+            services.TryAddSingleton<IOsharpBuilder>(builder);
+
             TOsharpPackManager manager = new TOsharpPackManager();
             services.AddSingleton<IOsharpPackManager>(manager);
             manager.LoadPacks(services);
@@ -54,11 +56,19 @@ namespace Microsoft.Extensions.DependencyInjection
         }
 
         /// <summary>
+        /// 获取<see cref="IConfiguration"/>配置信息
+        /// </summary>
+        public static IConfiguration GetConfiguration(this IServiceCollection services)
+        {
+            return services.GetSingletonInstanceOrNull<IConfiguration>();
+        }
+
+        /// <summary>
         /// 从服务提供者中获取OSharpOptions
         /// </summary>
-        public static OSharpOptions GetOSharpOptions(this IServiceProvider provider)
+        public static OsharpOptions GetOSharpOptions(this IServiceProvider provider)
         {
-            return provider.GetService<IOptions<OSharpOptions>>()?.Value;
+            return provider.GetService<IOptions<OsharpOptions>>()?.Value;
         }
 
         /// <summary>
@@ -100,6 +110,15 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             IUnitOfWorkManager unitOfWorkManager = provider.GetService<IUnitOfWorkManager>();
             return unitOfWorkManager.GetUnitOfWork<TEntity, TKey>();
+        }
+
+        /// <summary>
+        /// 获取指定实体类型的上下文对象
+        /// </summary>
+        public static IDbContext GetDbContext<TEntity, TKey>(this IServiceProvider provider) where TEntity : IEntity<TKey>
+        {
+            IUnitOfWorkManager unitOfWorkManager = provider.GetService<IUnitOfWorkManager>();
+            return unitOfWorkManager.GetDbContext<TEntity, TKey>();
         }
 
         /// <summary>

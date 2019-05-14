@@ -20,12 +20,12 @@ using Liuliu.Demo.Security.Entities;
 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 
 using OSharp.AspNetCore.Mvc.Filters;
 using OSharp.AspNetCore.UI;
 using OSharp.Core.Modules;
 using OSharp.Data;
-using OSharp.Dependency;
 using OSharp.Entity;
 using OSharp.Extensions;
 using OSharp.Filter;
@@ -39,10 +39,13 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
     public class RoleEntityController : AdminApiController
     {
         private readonly SecurityManager _securityManager;
+        private readonly IFilterService _filterService;
 
-        public RoleEntityController(SecurityManager securityManager)
+        public RoleEntityController(SecurityManager securityManager,
+            IFilterService filterService)
         {
             _securityManager = securityManager;
+            _filterService = filterService;
         }
 
         /// <summary>
@@ -56,7 +59,7 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
         [Description("读取")]
         public PageData<EntityRoleOutputDto> Read(PageRequest request)
         {
-            Expression<Func<EntityRole, bool>> predicate = FilterHelper.GetExpression<EntityRole>(request.FilterGroup);
+            Expression<Func<EntityRole, bool>> predicate = _filterService.GetExpression<EntityRole>(request.FilterGroup);
             if (request.PageCondition.SortConditions.Length == 0)
             {
                 request.PageCondition.SortConditions = new[]
@@ -66,41 +69,24 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
                     new SortCondition("Operation")
                 };
             }
-            RoleManager<Role> roleManager = ServiceLocator.Instance.GetService<RoleManager<Role>>();
-            Func<EntityRole, bool> updateFunc = FilterHelper.GetDataFilterExpression<EntityRole>(null, DataAuthOperation.Update).Compile();
-            Func<EntityRole, bool> deleteFunc = FilterHelper.GetDataFilterExpression<EntityRole>(null, DataAuthOperation.Delete).Compile();
+            RoleManager<Role> roleManager = HttpContext.RequestServices.GetService<RoleManager<Role>>();
+            Func<EntityRole, bool> updateFunc = _filterService.GetDataFilterExpression<EntityRole>(null, DataAuthOperation.Update).Compile();
+            Func<EntityRole, bool> deleteFunc = _filterService.GetDataFilterExpression<EntityRole>(null, DataAuthOperation.Delete).Compile();
             var page = _securityManager.EntityRoles.ToPage(predicate,
                 request.PageCondition,
                 m => new
                 {
-                    Data = m,
-                    m.Id,
-                    m.RoleId,
-                    m.EntityId,
-                    m.Operation,
-                    m.FilterGroupJson,
-                    m.IsLocked,
-                    m.CreatedTime,
+                    D = m,
                     RoleName = roleManager.Roles.First(n => n.Id == m.RoleId).Name,
-                    Entity = _securityManager.EntityInfos.Where(n => n.Id == m.EntityId).Select(n => new
-                    {
-                        n.Name,
-                        n.TypeName
-                    }).FirstOrDefault()
-                }).ToPageResult(data => data.Select(n => new EntityRoleOutputDto()
+                    EntityName = m.EntityInfo.Name,
+                    EntityType = m.EntityInfo.TypeName,
+                }).ToPageResult(data => data.Select(m => new EntityRoleOutputDto(m.D)
                 {
-                    Id = n.Id,
-                    RoleId = n.RoleId,
-                    EntityId = n.EntityId,
-                    RoleName = n.RoleName,
-                    EntityName = n.Entity.Name,
-                    EntityType = n.Entity.TypeName,
-                    Operation = n.Operation,
-                    FilterGroup = n.FilterGroupJson.FromJsonString<FilterGroup>(),
-                    IsLocked = n.IsLocked,
-                    CreatedTime = n.CreatedTime,
-                    Updatable = updateFunc(n.Data),
-                    Deletable = deleteFunc(n.Data)
+                    RoleName = m.RoleName,
+                    EntityName = m.EntityName,
+                    EntityType = m.EntityType,
+                    Updatable = updateFunc(m.D),
+                    Deletable = deleteFunc(m.D)
                 }).ToArray());
             return page.ToPageData();
         }
@@ -119,7 +105,8 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
         [Description("新增")]
         public async Task<AjaxResult> Create(params EntityRoleInputDto[] dtos)
         {
-            dtos.CheckNotNull("dtos");
+            Check.NotNull(dtos, nameof(dtos));
+            
             OperationResult result = await _securityManager.CreateEntityRoles(dtos);
             return result.ToAjaxResult();
         }
@@ -138,7 +125,7 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
         [Description("更新")]
         public async Task<AjaxResult> Update(params EntityRoleInputDto[] dtos)
         {
-            dtos.CheckNotNull("dtos");
+            Check.NotNull(dtos, nameof(dtos));
             OperationResult result = await _securityManager.UpdateEntityRoles(dtos);
             return result.ToAjaxResult();
         }
@@ -155,7 +142,8 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
         [Description("删除")]
         public async Task<AjaxResult> Delete(params Guid[] ids)
         {
-            ids.CheckNotNull("ids");
+            Check.NotNull(ids, nameof(ids));
+            
             OperationResult result = await _securityManager.DeleteEntityRoles(ids);
             return result.ToAjaxResult();
         }

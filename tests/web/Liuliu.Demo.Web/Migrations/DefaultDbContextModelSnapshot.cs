@@ -15,7 +15,7 @@ namespace Liuliu.Demo.Web.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "2.1.1-rtm-30846")
+                .HasAnnotation("ProductVersion", "2.2.3-servicing-35854")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128)
                 .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
@@ -72,6 +72,8 @@ namespace Liuliu.Demo.Web.Migrations
 
                     b.Property<DateTime>("CreatedTime");
 
+                    b.Property<DateTime?>("DeletedTime");
+
                     b.Property<bool>("IsAdmin");
 
                     b.Property<bool>("IsDefault");
@@ -91,15 +93,27 @@ namespace Liuliu.Demo.Web.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("NormalizedName")
+                    b.HasIndex("NormalizedName", "DeletedTime")
                         .IsUnique()
-                        .HasName("RoleNameIndex");
+                        .HasName("RoleNameIndex")
+                        .HasFilter("[DeletedTime] IS NOT NULL");
 
                     b.ToTable("Role");
 
                     b.HasData(
-                        new { Id = 1, ConcurrencyStamp = "1b18fbe8-a1b9-4b9b-afc9-090eff89dcd6", CreatedTime = new DateTime(2018, 8, 12, 16, 6, 36, 998, DateTimeKind.Local), IsAdmin = true, IsDefault = false, IsLocked = false, IsSystem = true, Name = "系统管理员", NormalizedName = "系统管理员", Remark = "系统最高权限管理角色" }
-                    );
+                        new
+                        {
+                            Id = 1,
+                            ConcurrencyStamp = "97313840-7874-47e5-81f2-565613c8cdcc",
+                            CreatedTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsAdmin = true,
+                            IsDefault = false,
+                            IsLocked = false,
+                            IsSystem = true,
+                            Name = "系统管理员",
+                            NormalizedName = "系统管理员",
+                            Remark = "系统最高权限管理角色"
+                        });
                 });
 
             modelBuilder.Entity("Liuliu.Demo.Identity.Entities.RoleClaim", b =>
@@ -134,8 +148,9 @@ namespace Liuliu.Demo.Web.Migrations
 
                     b.Property<DateTime>("CreatedTime");
 
-                    b.Property<string>("Email")
-                        .IsRequired();
+                    b.Property<DateTime?>("DeletedTime");
+
+                    b.Property<string>("Email");
 
                     b.Property<bool>("EmailConfirmed");
 
@@ -151,8 +166,7 @@ namespace Liuliu.Demo.Web.Migrations
 
                     b.Property<string>("NickName");
 
-                    b.Property<string>("NormalizeEmail")
-                        .IsRequired();
+                    b.Property<string>("NormalizeEmail");
 
                     b.Property<string>("NormalizedUserName")
                         .IsRequired();
@@ -174,12 +188,13 @@ namespace Liuliu.Demo.Web.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("NormalizeEmail")
+                    b.HasIndex("NormalizeEmail", "DeletedTime")
                         .HasName("EmailIndex");
 
-                    b.HasIndex("NormalizedUserName")
+                    b.HasIndex("NormalizedUserName", "DeletedTime")
                         .IsUnique()
-                        .HasName("UserNameIndex");
+                        .HasName("UserNameIndex")
+                        .HasFilter("[DeletedTime] IS NOT NULL");
 
                     b.ToTable("User");
                 });
@@ -227,6 +242,10 @@ namespace Liuliu.Demo.Web.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd();
 
+                    b.Property<string>("Avatar");
+
+                    b.Property<DateTime>("CreatedTime");
+
                     b.Property<string>("LoginProvider");
 
                     b.Property<string>("ProviderDisplayName");
@@ -254,6 +273,8 @@ namespace Liuliu.Demo.Web.Migrations
 
                     b.Property<DateTime>("CreatedTime");
 
+                    b.Property<DateTime?>("DeletedTime");
+
                     b.Property<bool>("IsLocked");
 
                     b.Property<int>("RoleId");
@@ -264,9 +285,10 @@ namespace Liuliu.Demo.Web.Migrations
 
                     b.HasIndex("RoleId");
 
-                    b.HasIndex("UserId", "RoleId")
+                    b.HasIndex("UserId", "RoleId", "DeletedTime")
                         .IsUnique()
-                        .HasName("UserRoleIndex");
+                        .HasName("UserRoleIndex")
+                        .HasFilter("[DeletedTime] IS NOT NULL");
 
                     b.ToTable("UserRole");
                 });
@@ -374,8 +396,15 @@ namespace Liuliu.Demo.Web.Migrations
                     b.ToTable("Module");
 
                     b.HasData(
-                        new { Id = 1, Code = "Root", Name = "根节点", OrderCode = 1.0, Remark = "系统根节点", TreePathString = "$1$" }
-                    );
+                        new
+                        {
+                            Id = 1,
+                            Code = "Root",
+                            Name = "根节点",
+                            OrderCode = 1.0,
+                            Remark = "系统根节点",
+                            TreePathString = "$1$"
+                        });
                 });
 
             modelBuilder.Entity("Liuliu.Demo.Security.Entities.ModuleFunction", b =>
@@ -445,18 +474,15 @@ namespace Liuliu.Demo.Web.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd();
 
-                    b.Property<string>("EntityKey")
-                        .IsRequired();
+                    b.Property<string>("EntityKey");
 
-                    b.Property<string>("Name")
-                        .IsRequired();
+                    b.Property<string>("Name");
 
                     b.Property<int>("OperateType");
 
                     b.Property<Guid>("OperationId");
 
-                    b.Property<string>("TypeName")
-                        .IsRequired();
+                    b.Property<string>("TypeName");
 
                     b.HasKey("Id");
 
@@ -476,8 +502,7 @@ namespace Liuliu.Demo.Web.Migrations
 
                     b.Property<int>("Elapsed");
 
-                    b.Property<string>("FunctionName")
-                        .IsRequired();
+                    b.Property<string>("FunctionName");
 
                     b.Property<string>("Ip");
 
@@ -509,11 +534,9 @@ namespace Liuliu.Demo.Web.Migrations
 
                     b.Property<string>("DataType");
 
-                    b.Property<string>("DisplayName")
-                        .IsRequired();
+                    b.Property<string>("DisplayName");
 
-                    b.Property<string>("FieldName")
-                        .IsRequired();
+                    b.Property<string>("FieldName");
 
                     b.Property<string>("NewValue");
 
@@ -611,14 +634,27 @@ namespace Liuliu.Demo.Web.Migrations
                     b.ToTable("KeyValue");
 
                     b.HasData(
-                        new { Id = new Guid("a239920c-574f-4928-b7a8-a93a01097d29"), IsLocked = false, Key = "Site.Name", ValueJson = "\"OSHARP\"", ValueType = "System.String" },
-                        new { Id = new Guid("eba477b4-fc46-484a-8d04-a93a01097d30"), IsLocked = false, Key = "Site.Description", ValueJson = "\"Osharp with .NetStandard2.0 & Angular6\"", ValueType = "System.String" }
-                    );
+                        new
+                        {
+                            Id = new Guid("534d7813-0eea-44cc-b88e-a9cb010c6981"),
+                            IsLocked = false,
+                            Key = "Site.Name",
+                            ValueJson = "\"OSHARP\"",
+                            ValueType = "System.String,System.Private.CoreLib"
+                        },
+                        new
+                        {
+                            Id = new Guid("977e4bba-97b2-4759-a768-a9cb010c698c"),
+                            IsLocked = false,
+                            Key = "Site.Description",
+                            ValueJson = "\"Osharp with .NetStandard2.0 & Angular6\"",
+                            ValueType = "System.String,System.Private.CoreLib"
+                        });
                 });
 
             modelBuilder.Entity("Liuliu.Demo.Identity.Entities.LoginLog", b =>
                 {
-                    b.HasOne("Liuliu.Demo.Identity.Entities.User")
+                    b.HasOne("Liuliu.Demo.Identity.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade);
@@ -633,65 +669,65 @@ namespace Liuliu.Demo.Web.Migrations
 
             modelBuilder.Entity("Liuliu.Demo.Identity.Entities.RoleClaim", b =>
                 {
-                    b.HasOne("Liuliu.Demo.Identity.Entities.Role")
-                        .WithMany()
+                    b.HasOne("Liuliu.Demo.Identity.Entities.Role", "Role")
+                        .WithMany("RoleClaims")
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("Liuliu.Demo.Identity.Entities.UserClaim", b =>
                 {
-                    b.HasOne("Liuliu.Demo.Identity.Entities.User")
-                        .WithMany()
+                    b.HasOne("Liuliu.Demo.Identity.Entities.User", "User")
+                        .WithMany("UserClaims")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("Liuliu.Demo.Identity.Entities.UserDetail", b =>
                 {
-                    b.HasOne("Liuliu.Demo.Identity.Entities.User")
-                        .WithOne()
+                    b.HasOne("Liuliu.Demo.Identity.Entities.User", "User")
+                        .WithOne("UserDetail")
                         .HasForeignKey("Liuliu.Demo.Identity.Entities.UserDetail", "UserId")
                         .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("Liuliu.Demo.Identity.Entities.UserLogin", b =>
                 {
-                    b.HasOne("Liuliu.Demo.Identity.Entities.User")
-                        .WithMany()
+                    b.HasOne("Liuliu.Demo.Identity.Entities.User", "User")
+                        .WithMany("UserLogins")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("Liuliu.Demo.Identity.Entities.UserRole", b =>
                 {
-                    b.HasOne("Liuliu.Demo.Identity.Entities.Role")
-                        .WithMany()
+                    b.HasOne("Liuliu.Demo.Identity.Entities.Role", "Role")
+                        .WithMany("UserRoles")
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade);
 
-                    b.HasOne("Liuliu.Demo.Identity.Entities.User")
-                        .WithMany()
+                    b.HasOne("Liuliu.Demo.Identity.Entities.User", "User")
+                        .WithMany("UserRoles")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("Liuliu.Demo.Identity.Entities.UserToken", b =>
                 {
-                    b.HasOne("Liuliu.Demo.Identity.Entities.User")
-                        .WithMany()
+                    b.HasOne("Liuliu.Demo.Identity.Entities.User", "User")
+                        .WithMany("UserTokens")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("Liuliu.Demo.Security.Entities.EntityRole", b =>
                 {
-                    b.HasOne("OSharp.Core.EntityInfos.EntityInfo")
+                    b.HasOne("OSharp.Core.EntityInfos.EntityInfo", "EntityInfo")
                         .WithMany()
                         .HasForeignKey("EntityId")
                         .OnDelete(DeleteBehavior.Cascade);
 
-                    b.HasOne("Liuliu.Demo.Identity.Entities.Role")
+                    b.HasOne("Liuliu.Demo.Identity.Entities.Role", "Role")
                         .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade);
@@ -699,12 +735,12 @@ namespace Liuliu.Demo.Web.Migrations
 
             modelBuilder.Entity("Liuliu.Demo.Security.Entities.EntityUser", b =>
                 {
-                    b.HasOne("OSharp.Core.EntityInfos.EntityInfo")
+                    b.HasOne("OSharp.Core.EntityInfos.EntityInfo", "EntityInfo")
                         .WithMany()
                         .HasForeignKey("EntityId")
                         .OnDelete(DeleteBehavior.Cascade);
 
-                    b.HasOne("Liuliu.Demo.Identity.Entities.User")
+                    b.HasOne("Liuliu.Demo.Identity.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade);
@@ -712,19 +748,19 @@ namespace Liuliu.Demo.Web.Migrations
 
             modelBuilder.Entity("Liuliu.Demo.Security.Entities.Module", b =>
                 {
-                    b.HasOne("Liuliu.Demo.Security.Entities.Module")
-                        .WithMany()
+                    b.HasOne("Liuliu.Demo.Security.Entities.Module", "Parent")
+                        .WithMany("Children")
                         .HasForeignKey("ParentId");
                 });
 
             modelBuilder.Entity("Liuliu.Demo.Security.Entities.ModuleFunction", b =>
                 {
-                    b.HasOne("OSharp.Core.Functions.Function")
+                    b.HasOne("OSharp.Core.Functions.Function", "Function")
                         .WithMany()
                         .HasForeignKey("FunctionId")
                         .OnDelete(DeleteBehavior.Cascade);
 
-                    b.HasOne("Liuliu.Demo.Security.Entities.Module")
+                    b.HasOne("Liuliu.Demo.Security.Entities.Module", "Module")
                         .WithMany()
                         .HasForeignKey("ModuleId")
                         .OnDelete(DeleteBehavior.Cascade);
@@ -732,12 +768,12 @@ namespace Liuliu.Demo.Web.Migrations
 
             modelBuilder.Entity("Liuliu.Demo.Security.Entities.ModuleRole", b =>
                 {
-                    b.HasOne("Liuliu.Demo.Security.Entities.Module")
+                    b.HasOne("Liuliu.Demo.Security.Entities.Module", "Module")
                         .WithMany()
                         .HasForeignKey("ModuleId")
                         .OnDelete(DeleteBehavior.Cascade);
 
-                    b.HasOne("Liuliu.Demo.Identity.Entities.Role")
+                    b.HasOne("Liuliu.Demo.Identity.Entities.Role", "Role")
                         .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade);
@@ -745,12 +781,12 @@ namespace Liuliu.Demo.Web.Migrations
 
             modelBuilder.Entity("Liuliu.Demo.Security.Entities.ModuleUser", b =>
                 {
-                    b.HasOne("Liuliu.Demo.Security.Entities.Module")
+                    b.HasOne("Liuliu.Demo.Security.Entities.Module", "Module")
                         .WithMany()
                         .HasForeignKey("ModuleId")
                         .OnDelete(DeleteBehavior.Cascade);
 
-                    b.HasOne("Liuliu.Demo.Identity.Entities.User")
+                    b.HasOne("Liuliu.Demo.Identity.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade);

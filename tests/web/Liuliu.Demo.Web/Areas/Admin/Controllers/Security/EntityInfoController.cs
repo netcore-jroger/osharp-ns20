@@ -21,6 +21,7 @@ using Microsoft.AspNetCore.Mvc;
 
 using OSharp.AspNetCore.Mvc.Filters;
 using OSharp.AspNetCore.UI;
+using OSharp.Core;
 using OSharp.Core.EntityInfos;
 using OSharp.Core.Modules;
 using OSharp.Data;
@@ -37,10 +38,13 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
     public class EntityInfoController : AdminApiController
     {
         private readonly SecurityManager _securityManager;
+        private readonly IFilterService _filterService;
 
-        public EntityInfoController(SecurityManager securityManager)
+        public EntityInfoController(SecurityManager securityManager,
+            IFilterService filterService)
         {
             _securityManager = securityManager;
+            _filterService = filterService;
         }
 
         /// <summary>
@@ -56,7 +60,7 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
             {
                 request.PageCondition.SortConditions = new[] { new SortCondition("TypeName") };
             }
-            Expression<Func<EntityInfo, bool>> predicate = FilterHelper.GetExpression<EntityInfo>(request.FilterGroup);
+            Expression<Func<EntityInfo, bool>> predicate = _filterService.GetExpression<EntityInfo>(request.FilterGroup);
             var page = _securityManager.EntityInfos.ToPage<EntityInfo, EntityInfoOutputDto>(predicate, request.PageCondition);
             return page.ToPageData();
         }
@@ -66,6 +70,7 @@ namespace Liuliu.Demo.Web.Areas.Admin.Controllers
         /// </summary>
         /// <returns>实体节点集合</returns>
         [HttpGet]
+        [ModuleInfo]
         [Description("读取节点")]
         public List<EntityInfoNode> ReadNode()
         {

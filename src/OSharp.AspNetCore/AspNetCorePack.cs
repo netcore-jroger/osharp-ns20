@@ -8,12 +8,12 @@
 // -----------------------------------------------------------------------
 
 using System.ComponentModel;
+using System.Security.Principal;
 
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
-using OSharp.AspNetCore.Mvc.Filters;
 using OSharp.Core.Packs;
-using OSharp.Dependency;
 
 
 namespace OSharp.AspNetCore
@@ -41,8 +41,14 @@ namespace OSharp.AspNetCore
         /// <returns></returns>
         public override IServiceCollection AddServices(IServiceCollection services)
         {
-            services.AddSingleton<IScopedServiceResolver, RequestScopedServiceResolver>();
-            services.AddScoped<UnitOfWorkAttribute>();
+            services.AddHttpContextAccessor();
+
+            //注入当前用户，替换Thread.CurrentPrincipal的作用
+            services.AddTransient<IPrincipal>(provider =>
+            {
+                IHttpContextAccessor accessor = provider.GetService<IHttpContextAccessor>();
+                return accessor?.HttpContext?.User;
+            });
 
             return services;
         }

@@ -33,17 +33,17 @@ namespace OSharp.Security
         where TModuleKey : struct, IEquatable<TModuleKey>
         where TModuleFunction : ModuleFunctionBase<TModuleKey>
     {
-        private readonly ServiceLocator _locator;
+        private readonly IServiceProvider _serviceProvider;
         private readonly IModuleInfoPicker _moduleInfoPicker;
 
         /// <summary>
         /// 初始化一个<see cref="ModuleHandlerBase{TModule, TModuleInputDto, TModuleKey, TModuleFunction}"/>类型的新实例
         /// </summary>
-        protected ModuleHandlerBase()
+        protected ModuleHandlerBase(IServiceProvider serviceProvider)
         {
-            _locator = ServiceLocator.Instance;
-            _moduleInfoPicker = _locator.GetService<IModuleInfoPicker>();
-            Logger = _locator.GetLogger(GetType());
+            _serviceProvider = serviceProvider;
+            _moduleInfoPicker = serviceProvider.GetService<IModuleInfoPicker>();
+            Logger = serviceProvider.GetLogger(GetType());
         }
 
         /// <summary>
@@ -61,7 +61,7 @@ namespace OSharp.Security
             {
                 return;
             }
-            _locator.ExcuteScopedWork(provider =>
+            _serviceProvider.ExecuteScopedWork(provider =>
             {
                 SyncToDatabase(provider, moduleInfos);
             });
@@ -80,15 +80,27 @@ namespace OSharp.Security
                 return;
             }
 
-            if (!moduleInfos.CheckSyncByHash(provider, Logger))
+            IModuleStore<TModule, TModuleInputDto, TModuleKey> moduleStore =
+                provider.GetService<IModuleStore<TModule, TModuleInputDto, TModuleKey>>();
+            if (moduleStore == null)
             {
+                Logger.LogWarning("初始化模块数据时，IRepository<,>的服务未找到，请初始化 EntityFrameworkCoreModule 模块");
                 return;
             }
 
-            IModuleStore<TModule, TModuleInputDto, TModuleKey> moduleStore =
-                provider.GetService<IModuleStore<TModule, TModuleInputDto, TModuleKey>>();
             IModuleFunctionStore<TModuleFunction, TModuleKey> moduleFunctionStore =
                 provider.GetService<IModuleFunctionStore<TModuleFunction, TModuleKey>>();
+            if (moduleFunctionStore == null)
+            {
+                Logger.LogWarning("初始化模块功能数据时，IRepository<,>的服务未找到，请初始化 EntityFrameworkCoreModule 模块");
+                return;
+            }
+
+            if (!moduleInfos.CheckSyncByHash(provider, Logger))
+            {
+                Logger.LogInformation("同步模块数据时，数据签名与上次相同，取消同步");
+                return;
+            }
 
             //删除数据库中多余的模块
             TModule[] modules = moduleStore.Modules.ToArray();

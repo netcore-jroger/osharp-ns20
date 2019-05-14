@@ -11,10 +11,12 @@ using System;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using OSharp.AspNetCore.Mvc;
 using OSharp.Core.EntityInfos;
 using OSharp.Core.Functions;
 using OSharp.Core.Modules;
 using OSharp.Core.Packs;
+using OSharp.EventBuses;
 using OSharp.Secutiry;
 
 
@@ -42,6 +44,7 @@ namespace OSharp.Security
     /// <typeparam name="TEntityRoleInputDto">实体角色输入DTO类型</typeparam>
     /// <typeparam name="TRoleKey">角色编号类型</typeparam>
     /// <typeparam name="TUserKey">用户编号类型</typeparam>
+    [DependsOnPacks(typeof(EventBusPack), typeof(MvcFunctionPack))]
     public abstract class SecurityPackBase<TSecurityManager, TFunctionAuthorization, TFunctionAuthCache, TDataAuthCache, TModuleHandler, TFunction, TFunctionInputDto, TEntityInfo,
         TEntityInfoInputDto, TModule, TModuleInputDto, TModuleKey, TModuleFunction, TModuleRole, TModuleUser, TEntityRole, TEntityRoleInputDto, TRoleKey, TUserKey> : OsharpPack
         where TSecurityManager : class, IFunctionStore<TFunction, TFunctionInputDto>,
@@ -82,13 +85,12 @@ namespace OSharp.Security
         /// <returns></returns>
         public override IServiceCollection AddServices(IServiceCollection services)
         {
-            services.AddScoped<TSecurityManager>();
-
             services.AddSingleton(typeof(IFunctionAuthorization), typeof(TFunctionAuthorization));
             services.AddSingleton(typeof(IFunctionAuthCache), typeof(TFunctionAuthCache));
             services.AddSingleton(typeof(IDataAuthCache), typeof(TDataAuthCache));
             services.AddSingleton(typeof(IModuleHandler), typeof(TModuleHandler));
 
+            services.AddScoped<TSecurityManager>();
             services.AddScoped(typeof(IFunctionStore<TFunction, TFunctionInputDto>), provider => provider.GetService<TSecurityManager>());
             services.AddScoped(typeof(IEntityInfoStore<TEntityInfo, TEntityInfoInputDto>), provider => provider.GetService<TSecurityManager>());
             services.AddScoped(typeof(IModuleStore<TModule, TModuleInputDto, TModuleKey>), provider => provider.GetService<TSecurityManager>());

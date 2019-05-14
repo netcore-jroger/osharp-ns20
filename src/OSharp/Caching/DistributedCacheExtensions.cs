@@ -25,7 +25,6 @@ using OSharp.Exceptions;
 using OSharp.Extensions;
 using OSharp.Filter;
 using OSharp.Json;
-using OSharp.Properties;
 using OSharp.Reflection;
 
 
@@ -43,7 +42,7 @@ namespace OSharp.Caching
         {
             Check.NotNullOrEmpty(key, nameof(key));
             Check.NotNull(value, nameof(value));
-            
+
             string json = value.ToJsonString();
             if (options == null)
             {
@@ -127,7 +126,7 @@ namespace OSharp.Caching
             Check.NotNullOrEmpty(key, nameof(key));
             Check.NotNull(value, nameof(value));
             Check.NotNull(function, nameof(function));
-            
+
             DistributedCacheEntryOptions options = function.ToCacheOptions();
             if (options == null)
             {
@@ -206,7 +205,7 @@ namespace OSharp.Caching
         public static TResult Get<TResult>(this IDistributedCache cache, string key, Func<TResult> getFunc, int cacheSeconds)
         {
             Check.GreaterThan(cacheSeconds, nameof(cacheSeconds), 0);
-            
+
             DistributedCacheEntryOptions options = new DistributedCacheEntryOptions();
             options.SetAbsoluteExpiration(TimeSpan.FromSeconds(cacheSeconds));
             return cache.Get<TResult>(key, getFunc, options);

@@ -12,24 +12,29 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Dynamic;
+using System.IO;
 using System.Linq;
+using System.Net.Http.Headers;
 using System.Reflection;
+using System.Threading.Tasks;
 
 using Liuliu.Demo.Common;
 using Liuliu.Demo.Security;
-using Liuliu.Demo.Security.Dtos;
 
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 
 using OSharp.AspNetCore;
 using OSharp.AspNetCore.Mvc;
-using OSharp.AspNetCore.Mvc.Filters;
+using OSharp.AspNetCore.UI;
 using OSharp.CodeGenerator;
 using OSharp.Core.Modules;
 using OSharp.Core.Packs;
+using OSharp.Data;
 using OSharp.Drawing;
-using OSharp.Filter;
+using OSharp.IO;
 using OSharp.Reflection;
 
 
@@ -39,13 +44,15 @@ namespace Liuliu.Demo.Web.Controllers
     [ModuleInfo(Order = 3)]
     public class CommonController : ApiController
     {
-        private readonly ICommonContract _commonContract;
-        private readonly SecurityManager _securityManager;
+        private readonly IVerifyCodeService _verifyCodeService;
+        private readonly IHostingEnvironment _environment;
 
-        public CommonController(ICommonContract commonContract, SecurityManager securityManager)
+        public CommonController(
+            IVerifyCodeService verifyCodeService,
+            IHostingEnvironment environment)
         {
-            _commonContract = commonContract;
-            _securityManager = securityManager;
+            _verifyCodeService = verifyCodeService;
+            _environment = environment;
         }
 
         /// <summary>
@@ -66,8 +73,8 @@ namespace Liuliu.Demo.Web.Controllers
                 RandomPosition = true
             };
             Bitmap bitmap = coder.CreateImage(4, out string code);
-            VerifyCodeHandler.SetCode(code, out string id);
-            return VerifyCodeHandler.GetImageString(bitmap, id);
+            _verifyCodeService.SetCode(code, out string id);
+            return _verifyCodeService.GetImageString(bitmap, id);
         }
 
         /// <summary>
@@ -81,7 +88,28 @@ namespace Liuliu.Demo.Web.Controllers
         [Description("验证验证码的有效性")]
         public bool CheckVerifyCode(string code, string id)
         {
-            return VerifyCodeHandler.CheckCode(code, id, false);
+            return _verifyCodeService.CheckCode(code, id, false);
+        }
+
+        /// <summary>
+        /// 上传图片
+        /// </summary>
+        [HttpPost]
+        [ModuleInfo]
+        [Description("上传图片")]
+        public async Task<AjaxResult> UploadImage(IFormFile file)
+        {
+            string fileName = file.FileName;
+            fileName = $"{Path.GetFileNameWithoutExtension(fileName)}-{DateTime.Now:MMddHHmmssff}{Path.GetExtension(fileName)}";
+            string dir = Path.Combine(_environment.WebRootPath, "upload-files");
+            DirectoryHelper.CreateIfNotExists(dir);
+            string filePath = dir + $"\\{fileName}";
+            using (FileStream fs = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(fs);
+            }
+
+            return new AjaxResult("上传成功", AjaxResultType.Success, $"upload-files/{fileName}");
         }
 
         /// <summary>
