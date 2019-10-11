@@ -42,7 +42,7 @@ namespace OSharp.Entity
             where TEntity : class, IEntity<TKey>
             where TKey : IEquatable<TKey>
         {
-            return repository.TrackQuery().Where(predicate).Delete(interceptAction);
+            return repository.Query(predicate).Delete(interceptAction);
         }
 
         /// <summary>
@@ -60,7 +60,7 @@ namespace OSharp.Entity
             where TEntity : class, IEntity<TKey>
             where TKey : IEquatable<TKey>
         {
-            return await repository.TrackQuery().Where(predicate).DeleteAsync(interceptAction);
+            return await repository.Query(predicate).DeleteAsync(interceptAction);
         }
 
         /// <summary>
@@ -80,7 +80,7 @@ namespace OSharp.Entity
             where TEntity : class, IEntity<TKey>
             where TKey : IEquatable<TKey>
         {
-            return repository.TrackQuery().Where(predicate).Update(updateExpression, interceptAction);
+            return repository.Query(predicate).Update(updateExpression, interceptAction);
         }
 
         /// <summary>
@@ -100,7 +100,7 @@ namespace OSharp.Entity
             where TEntity : class, IEntity<TKey>
             where TKey : IEquatable<TKey>
         {
-            return await repository.TrackQuery().Where(predicate).UpdateAsync(updateExpression, interceptAction);
+            return await repository.Query(predicate).UpdateAsync(updateExpression, interceptAction);
         }
 
         /// <summary>
@@ -116,7 +116,11 @@ namespace OSharp.Entity
             {
                 throw new OsharpException($"参数dbContext类型为“{dbContext.GetType()}”，不能转换为 DbContext");
             }
+#if NETSTANDARD2_1
+            return context.Set<TEntity>().FromSqlRaw(sql, parameters);
+#else
             return context.Set<TEntity>().FromSql(new RawSqlString(sql), parameters);
+#endif
         }
     }
 }

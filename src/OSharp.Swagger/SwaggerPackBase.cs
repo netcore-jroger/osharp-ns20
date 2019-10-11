@@ -17,6 +17,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
+using Microsoft.OpenApi.Models;
+
 using OSharp.AspNetCore;
 using OSharp.Core.Packs;
 using OSharp.Exceptions;
@@ -69,22 +71,29 @@ namespace OSharp.Swagger
             services.AddMvcCore().AddApiExplorer();
             services.AddSwaggerGen(options =>
             {
-                options.SwaggerDoc($"v{version}", new Info() { Title = title, Version = $"v{version}" });
+                options.SwaggerDoc($"v{version}", new OpenApiInfo() { Title = title, Version = $"{version}" });
+
                 Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory, "*.xml").ToList().ForEach(file =>
                 {
                     options.IncludeXmlComments(file);
                 });
                 //权限Token
-                options.AddSecurityDefinition("Bearer", new ApiKeyScheme()
+                options.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme()
                 {
                     Description = "请输入带有Bearer的Token，形如 “Bearer {Token}” ",
                     Name = "Authorization",
-                    In = "header",
-                    Type = "apiKey"
+                    In = ParameterLocation.Header,
+                    Type = SecuritySchemeType.ApiKey
                 });
-                options.AddSecurityRequirement(new Dictionary<string, IEnumerable<string>>()
+                options.AddSecurityRequirement(new OpenApiSecurityRequirement
                 {
-                    { "Bearer", Enumerable.Empty<string>() }
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "oauth2" }
+                        },
+                        new[] { "readAccess", "writeAccess" }
+                    }
                 });
             });
 

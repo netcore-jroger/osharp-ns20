@@ -28,7 +28,7 @@ namespace OSharp.Hangfire
     /// Hangfire后台任务模块基类
     /// </summary>
     [DependsOnPacks(typeof(AspNetCorePack))]
-    public abstract class HangfirePackCore : AspOsharpPack
+    public abstract class HangfirePackBase : AspOsharpPack
     {
         /// <summary>
         /// 获取 模块级别，级别越小越先启动
@@ -49,7 +49,11 @@ namespace OSharp.Hangfire
         public override IServiceCollection AddServices(IServiceCollection services)
         {
             IConfiguration configuration = services.GetConfiguration();
+#if NETCOREAPP3_0
+            bool enabled = false;
+#else
             bool enabled = configuration["OSharp:Hangfire:Enabled"].CastTo(false);
+#endif
             if (!enabled)
             {
                 return services;
@@ -68,7 +72,11 @@ namespace OSharp.Hangfire
         {
             IServiceProvider serviceProvider = app.ApplicationServices;
             IConfiguration configuration = serviceProvider.GetService<IConfiguration>();
+#if NETCOREAPP3_0
+            bool enabled = false;
+#else
             bool enabled = configuration["OSharp:Hangfire:Enabled"].CastTo(false);
+#endif
             if (!enabled)
             {
                 return;
