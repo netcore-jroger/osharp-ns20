@@ -5,6 +5,7 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;netcoreapp3.0</TargetFrameworks>
+    <RootNamespace>Liuliu.Demo</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,9 +21,20 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\OSharp.AutoMapper\OSharp.AutoMapper.csproj" />
     <ProjectReference Include="..\..\..\src\OSharp.Permissions\OSharp.Permissions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Update="Identity/IdentityService.*.cs">
       <DependentUpon>IdentityService.cs</DependentUpon>
     </Compile>
+    <Compile Update="Infos/InfosService.*.cs">
+      <DependentUpon>InfosService.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Infos/InfosService.*.generated.cs">
+      <DependentUpon>InfosService.generated.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Infos/InfosServiceBase.*.generated.cs">
+      <DependentUpon>InfosServiceBase.generated.cs</DependentUpon>
+    </Compile>
   </ItemGroup>
-
 </Project>
