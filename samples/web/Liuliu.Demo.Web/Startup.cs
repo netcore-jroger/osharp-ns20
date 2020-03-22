@@ -7,19 +7,14 @@
 //  <last-date>2018-06-27 4:50</last-date>
 // -----------------------------------------------------------------------
 
-using Liuliu.Demo.Web.Startups;
+using System;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
-#if NETCOREAPP3_0
 using Microsoft.Extensions.Hosting;
-#endif
-using Microsoft.Extensions.Logging;
 
 using OSharp.AspNetCore;
-using OSharp.Core.Builders;
-using OSharp.Entity;
 
 
 namespace Liuliu.Demo.Web
@@ -33,13 +28,7 @@ namespace Liuliu.Demo.Web
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-#if NETCOREAPP3_0
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILoggerFactory loggerFactory)
-
-#else
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
-
-#endif
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())
             {
@@ -49,15 +38,16 @@ namespace Liuliu.Demo.Web
             else
             {
                 app.UseExceptionHandler("/#/500");
-                app.UseHsts().UseHttpsRedirection();
+                app.UseHsts();
+                //app.UseHttpsRedirection(); // 启用HTTPS
             }
 
-            app
-                //.UseMiddleware<NodeNoFoundHandlerMiddleware>()
-                .UseMiddleware<NodeExceptionHandlerMiddleware>()
-                .UseDefaultFiles()
-                .UseStaticFiles()
-                .UseOSharp();
+            //app.UseMiddleware<HostHttpCryptoMiddleware>();
+            //app.UseMiddleware<JsonNoFoundHandlerMiddleware>();
+            app.UseMiddleware<JsonExceptionHandlerMiddleware>();
+            app.UseDefaultFiles();
+            app.UseStaticFiles();
+            app.UseOSharp();
         }
     }
 }

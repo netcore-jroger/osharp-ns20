@@ -8,31 +8,24 @@
 // -----------------------------------------------------------------------
 
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Dynamic;
 using System.IO;
 using System.Linq;
-using System.Net.Http.Headers;
 using System.Reflection;
 using System.Threading.Tasks;
-
-using Liuliu.Demo.Common;
-using Liuliu.Demo.Security;
 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyModel;
 
 using OSharp.AspNetCore;
 using OSharp.AspNetCore.Mvc;
 using OSharp.AspNetCore.UI;
+using OSharp.Authorization.Modules;
 using OSharp.CodeGenerator;
-using OSharp.Collections;
-using OSharp.Core.Modules;
 using OSharp.Core.Packs;
 using OSharp.Data;
 using OSharp.Drawing;
@@ -49,11 +42,11 @@ namespace Liuliu.Demo.Web.Controllers
     public class CommonController : ApiController
     {
         private readonly IVerifyCodeService _verifyCodeService;
-        private readonly IHostingEnvironment _environment;
+        private readonly IWebHostEnvironment _environment;
 
         public CommonController(
             IVerifyCodeService verifyCodeService,
-            IHostingEnvironment environment)
+            IWebHostEnvironment environment)
         {
             _verifyCodeService = verifyCodeService;
             _environment = environment;
@@ -149,56 +142,6 @@ namespace Liuliu.Demo.Web.Controllers
             };
 
             return info;
-        }
-
-        /// <summary>
-        /// 获取分类类型元数据
-        /// </summary>
-        /// <param name="type">类型分类，entity,inputdto,outputdto</param>
-        /// <param name="handler">类型元数据处理器</param>
-        /// <returns></returns>
-        [HttpGet]
-        [ModuleInfo]
-        [Description("获取分类类型元数据")]
-        public TypeMetadata[] GetTypeMetadatas(string type, [FromServices]ITypeMetadataHandler handler)
-        {
-            if (handler == null)
-            {
-                return new TypeMetadata[0];
-            }
-            switch (type?.ToLower())
-            {
-                case "entity":
-                    return handler.GetEntityTypeMetadatas();
-                case "inputdto":
-                    return handler.GetInputDtoMetadatas();
-                case "outputdto":
-                    return handler.GetOutputDtoMetadata();
-            }
-            return new TypeMetadata[0];
-        }
-
-        /// <summary>
-        /// 获取指定类型的元数据
-        /// </summary>
-        /// <param name="typeFullName">类型命名</param>
-        /// <param name="handler">处理器</param>
-        /// <returns>类型元数据</returns>
-        [HttpGet]
-        [ModuleInfo]
-        [Description("获取类型元数据")]
-        public TypeMetadata GeTypeMetadata(string typeFullName, [FromServices] ITypeMetadataHandler handler)
-        {
-            if (handler == null)
-            {
-                return null;
-            }
-            Type type = Type.GetType(typeFullName);
-            if (type == null)
-            {
-                return null;
-            }
-            return handler.GetTypeMetadata(type);
         }
     }
 }
